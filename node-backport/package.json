@@ -1,0 +1,22 @@
+{
+  "name": "@grammy/runner",
+  "description": "Scale grammY bots that use long polling",
+  "version": "0.9.0",
+  "author": "KnorpelSenf",
+  "license": "MIT",
+  "engines": {
+    "node": ">=12.0.0"
+  },
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "devDependencies": {
+    "ts-morph": "^10.0.2",
+    "typescript": "^4.2.3"
+  },
+  "dependencies": {
+    "abort-controller": "^3.0.0"
+  }
+}
