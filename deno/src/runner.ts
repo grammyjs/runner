@@ -1,12 +1,47 @@
 import { createParallelSink, UpdateSink } from './sink.ts'
 import { createSource, UpdateSource } from './source.ts'
 
+/**
+ * This handle gives you control over a runner. It allows you to stop the bot,
+ * start it again, and check whether it is running.
+ */
 export interface RunnerHandle {
+    /**
+     * Starts the bot. Note that calling `run` will automatically do this for you,
+     * so you only have to call `start` if you create a runner yourself with
+     * `createRunner`.
+     */
     start: () => void
+    /**
+     * Stops the bot. The bot will no longer fetch updates from Telegram, and it
+     * will interrupt the currently pending `getUpdates` call.
+     *
+     * This method returns a promise that will resolve as soon as all currently
+     * running middleware is done executing. This means that you can `await
+     * handle.stop()` to be sure that your bot really stopped completely.
+     */
     stop: () => Promise<void>
+    /**
+     * Returns a promise that resolves as soon as the runner stops, either by
+     * being stopped or by crashing. If the bot crashes, it means that the error
+     * handlers installed on the bot re-threw the error, in which case the bot
+     * terminates. A runner handle does not give you access to errors thrown by
+     * the bot. Returns `undefined` if and only if `isRunning` returns `false`.
+     */
+    task: () => Promise<void> | undefined
+    /**
+     * Determines whether the bot is currently running or not. Note that this
+     * will return `false` as soon as you call `stop` on the handle, even though
+     * the promise returned by `stop` may not have resolved yet.
+     */
     isRunning: () => boolean
 }
 
+/**
+ * Adapter interface that specifies a minimal structure a bot has to obey in
+ * order for `run` to be able to run it. All grammY bot automatically conform
+ * with this structure.
+ */
 interface BotAdapter<Y, R> {
     handleUpdate: (update: Y) => Promise<void>
     errorHandler: (error: R) => unknown
@@ -15,6 +50,22 @@ interface BotAdapter<Y, R> {
     }
 }
 
+/**
+ * Runs a grammY bot with long polling. Updates are processed in parallel with a
+ * default maximum concurrency of 500 updates. Calls to `getUpdates` will be
+ * slowed down and the `limit` parameter will be adjusted as soon as this load
+ * limit is reached.
+ *
+ * You should use this method if your bot processes a lot of updates (several
+ * thousand per hour), or if your bot has long-running operations such as large
+ * file transfers.
+ *
+ * Confer the grammY documentation to learn more about how to scale a bot with
+ * grammY.
+ *
+ * @param bot a grammY bot
+ * @returns a handle to manage your running bot
+ */
 export function run<Y, R>(bot: BotAdapter<Y, R>): RunnerHandle {
     // create source
     const source = createSource({
@@ -37,6 +88,17 @@ export function run<Y, R>(bot: BotAdapter<Y, R>): RunnerHandle {
     return runner
 }
 
+/**
+ * Creates a runner that pulls in updates from the supplied source, and passes
+ * them to the supplied sink. Returns a handle that lets you control the runner,
+ * e.g. start it.
+ *
+ * Note that once you stop the runner, it will close its update source.
+ *
+ * @param source the source of updates
+ * @param sink the sink for updates
+ * @returns a handle to start and manage your bot
+ */
 export function createRunner<Y>(
     source: UpdateSource<Y>,
     sink: UpdateSink<Y>
@@ -47,13 +109,17 @@ export function createRunner<Y>(
     async function runner(): Promise<void> {
         if (!running) return
         try {
-            for await (const updates of source.generator) {
+            for await (const updates of source.generator()) {
                 await sink.handle(updates)
                 if (!running) break
             }
-        } finally {
-            running = false
+        } catch (e) {
+            // Error is thrown when `stop` is called, so we just leave this
+            // empty. Custom errors should be handled by the bot before they
+            // reach us. This is the case for the default `run` implementation.
         }
+        running = false
+        task = undefined
     }
 
     return {
@@ -61,10 +127,14 @@ export function createRunner<Y>(
             running = true
             task = runner()
         },
-        stop: async () => {
+        stop: () => {
+            const t = task!
             running = false
+            task = undefined
             source.close()
+            return t
         },
+        task: () => task,
         isRunning: () => running && source.isActive(),
     }
 }
