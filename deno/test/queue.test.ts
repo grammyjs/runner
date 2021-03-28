@@ -36,6 +36,25 @@ function test(fn: (t: T) => void | Promise<void>): () => Promise<void> {
 }
 
 Deno.test(
+    'should allow infinite timeouts',
+    test(async t => {
+        let res = ''
+        const q = new DecayingDeque(
+            Infinity,
+            async v => {
+                res += v
+            },
+            false,
+            () => t.fail(),
+            () => t.fail()
+        )
+        await q.add(['a'])
+        t.assertEquals(res, 'a')
+        t.pass()
+    })
+)
+
+Deno.test(
     'should process a single update',
     test(async t => {
         let res = ''

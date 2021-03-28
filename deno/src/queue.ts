@@ -1,3 +1,5 @@
+// Maximal valid value that can be passed to `setTimeout`
+const MAX_TIMEOUT_VALUE = ~(1 << 31) // equals (2 ** 31 - 1)
 /**
  * A drift is an element in a doubly linked list, and it stores a task. A task
  * is represented as a Promise. Drifts remove themselves from the queue (they
@@ -265,7 +267,10 @@ export class DecayingDeque<Y, R = unknown> {
      * @param ms number of milliseconds to wait before the timeout kicks in
      */
     private startTimer(ms = this.taskTimeout): void {
-        this.timer = setTimeout(() => this.timeout(), ms)
+        this.timer =
+            ms > MAX_TIMEOUT_VALUE
+                ? undefined
+                : setTimeout(() => this.timeout(), ms)
     }
 
     /**
