@@ -1,5 +1,5 @@
-import { createParallelSink, UpdateSink } from './sink.ts'
-import { createSource, UpdateSource } from './source.ts'
+import { createConcurrentSink, SinkOptions, UpdateSink } from './sink.ts'
+import { createSource, UpdateSource, UpdateSupplier } from './source.ts'
 
 /**
  * This handle gives you control over a runner. It allows you to stop the bot,
@@ -43,16 +43,20 @@ export interface RunnerHandle {
  * with this structure.
  */
 interface BotAdapter<Y, R> {
+    init?: () => Promise<void>
     handleUpdate: (update: Y) => Promise<void>
     errorHandler: (error: R) => unknown
     api: {
-        getUpdates: ({}, signal: AbortSignal) => Promise<Y[]>
+        getUpdates: (
+            args: { offset: number; limit: number; timeout: number },
+            signal: AbortSignal
+        ) => Promise<Y[]>
     }
 }
 
 /**
- * Runs a grammY bot with long polling. Updates are processed in parallel with a
- * default maximum concurrency of 500 updates. Calls to `getUpdates` will be
+ * Runs a grammY bot with long polling. Updates are processed concurrently with
+ * a default maximum concurrency of 500 updates. Calls to `getUpdates` will be
  * slowed down and the `limit` parameter will be adjusted as soon as this load
  * limit is reached.
  *
@@ -64,15 +68,47 @@ interface BotAdapter<Y, R> {
  * grammY.
  *
  * @param bot a grammY bot
+ * @param concurrency maximal number of updates to process concurrently
+ * @param sourceOptions options to pass to `getUpdates` calls
+ * @param sinkOptions further configuration options
  * @returns a handle to manage your running bot
  */
-export function run<Y, R>(bot: BotAdapter<Y, R>): RunnerHandle {
+export function run<Y extends { update_id: number }, R>(
+    bot: BotAdapter<Y, R>,
+    concurrency = 500,
+    sourceOptions: any = {},
+    sinkOptions: SinkOptions<Y> = {
+        timeout: Infinity,
+        timeoutHandler: () => {},
+    }
+): RunnerHandle {
+    let offset = 0
+    async function fetchUpdates(batchSize: number, signal: AbortSignal) {
+        const limit = Math.max(100, Math.min(1, batchSize))
+        const args = {
+            timeout: 30,
+            ...sourceOptions,
+            offset,
+            limit,
+        }
+        const updates = await bot.api.getUpdates(args, signal)
+        const lastId = updates[updates.length - 1]?.update_id
+        if (lastId !== undefined) offset = lastId + 1
+        return updates
+    }
+
     // create source
     const source = createSource({
-        supply: signal => bot.api.getUpdates({}, signal),
+        supply: async function (batchSize, signal) {
+            if (bot.init !== undefined) await bot.init()
+            const updates = await fetchUpdates(batchSize, signal)
+            this.supply = fetchUpdates
+            return updates
+        },
     })
+
     // create sink
-    const sink = createParallelSink<Y, R>(
+    const sink = createConcurrentSink<Y, R>(
         { consume: update => bot.handleUpdate(update) },
         async error => {
             try {
@@ -80,7 +116,9 @@ export function run<Y, R>(bot: BotAdapter<Y, R>): RunnerHandle {
             } catch (error) {
                 printError(error)
             }
-        }
+        },
+        concurrency,
+        sinkOptions
     )
     // launch
     const runner = createRunner(source, sink)
@@ -110,8 +148,9 @@ export function createRunner<Y>(
         if (!running) return
         try {
             for await (const updates of source.generator()) {
-                await sink.handle(updates)
+                const capacity = await sink.handle(updates)
                 if (!running) break
+                source.setGeneratorPace(capacity)
             }
         } catch (e) {
             // Error is thrown when `stop` is called, so we just leave this
