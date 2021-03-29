@@ -78,10 +78,10 @@ export interface SinkOptions<Y> {
  * suited for debugging your bot. They do not scale well and should hence not be
  * used in a larger bot, or one with long-running middleware.
  *
- * @param handler update consumer
- * @param errorHandler error handler for when the update consumer rejects
- * @param options further options for creating the sink
- * @returns an update sink that handles updates one by one
+ * @param handler Update consumer
+ * @param errorHandler Error handler for when the update consumer rejects
+ * @param options Further options for creating the sink
+ * @returns An update sink that handles updates one by one
  */
 export function createSequentialSink<Y, R = unknown>(
     handler: UpdateConsumer<Y>,
@@ -118,10 +118,10 @@ export function createSequentialSink<Y, R = unknown>(
  * such as `telegraf`. If your bot specifically relies on this behavior, you may
  * want to choose creating a batch sink for compatibility reasons.
  *
- * @param handler update consumer
- * @param errorHandler error handler for when the update consumer rejects
- * @param options further options for creating the sink
- * @returns an update sink that handles updates batch by batch
+ * @param handler Update consumer
+ * @param errorHandler Error handler for when the update consumer rejects
+ * @param options Further options for creating the sink
+ * @returns An update sink that handles updates batch by batch
  */
 export function createBatchSink<Y, R = unknown>(
     handler: UpdateConsumer<Y>,
@@ -151,11 +151,11 @@ export function createBatchSink<Y, R = unknown>(
  * In the context of grammY, this is the sink that is created by default when
  * calling `run(bot)`.
  *
- * @param handler update consumer
- * @param errorHandler error handler for when the update consumer rejects
- * @param concurrency maximal number of updates to process concurrently
- * @param options further options for creating the sink
- * @returns an update sink that handles updates concurrently
+ * @param handler Update consumer
+ * @param errorHandler Error handler for when the update consumer rejects
+ * @param concurrency Maximal number of updates to process concurrently
+ * @param options Further options for creating the sink
+ * @returns An update sink that handles updates concurrently
  */
 export function createConcurrentSink<Y, R = unknown>(
     handler: UpdateConsumer<Y>,

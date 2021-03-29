@@ -103,11 +103,11 @@ export class DecayingDeque<Y, R = unknown> {
     /**
      * Creates a new decaying queue with the given parameters.
      *
-     * @param taskTimeout max period of time for a task
-     * @param worker task generator
+     * @param taskTimeout Max period of time for a task
+     * @param worker Task generator
      * @param concurrency `add` will return only after the number of pending tasks fell below `concurrency`. `false` means `1`, `true` means `Infinity`, numbers below `1` mean `1`
-     * @param catchError error handler, receives the error and the source element
-     * @param catchTimeout timeout handler, receives the source element and the promise of the task
+     * @param catchError Error handler, receives the error and the source element
+     * @param catchTimeout Timeout handler, receives the source element and the promise of the task
      */
     constructor(
         private readonly taskTimeout: number,
@@ -125,7 +125,7 @@ export class DecayingDeque<Y, R = unknown> {
      * Adds the provided elements to the queue and starts tasks for all of them
      * immediately. Returns a `Promise` that resolves with `concurrency - length`
      * once this value becomes positive.
-     * @param elems elements to be added
+     * @param elems Elements to be added
      * @returns `this.capacity()`
      */
     add(elems: Y[]): Promise<number> {
@@ -184,7 +184,7 @@ export class DecayingDeque<Y, R = unknown> {
      * Called when a node completed its lifecycle and should be removed from the
      * queue. Effectively wraps the `remove` call and takes care of the timer.
      *
-     * @param node drift to decay
+     * @param node Drift to decay
      */
     private decay(node: Drift<Y>): void {
         // We only need to restart the timer if we decay the head element of the
@@ -205,7 +205,7 @@ export class DecayingDeque<Y, R = unknown> {
      * Removes an element from the queue. Calls subscribers if there is capacity
      * after performing this operation.
      *
-     * @param node drift to remove
+     * @param node Drift to remove
      */
     private remove(node: Drift<Y>): void {
         // Connecting the links of `prev` and `next` removes `node`
@@ -236,9 +236,9 @@ export class DecayingDeque<Y, R = unknown> {
      * removes itself from the queue once it completes, and that the error handler
      * is invoked if it fails (rejects).
      *
-     * @param elem source element
-     * @param date date when this drift is created
-     * @returns the created drift
+     * @param elem Source element
+     * @param date Date when this drift is created
+     * @returns The created drift
      */
     private toDrift(elem: Y, date: number): Drift<Y> {
         const node: Drift<Y> = {
@@ -264,7 +264,7 @@ export class DecayingDeque<Y, R = unknown> {
     /**
      * Starts a timer that fires off a timeout after the given period of time.
      *
-     * @param ms number of milliseconds to wait before the timeout kicks in
+     * @param ms Number of milliseconds to wait before the timeout kicks in
      */
     private startTimer(ms = this.taskTimeout): void {
         this.timer =

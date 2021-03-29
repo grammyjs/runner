@@ -42,7 +42,7 @@ export interface UpdateSource<Y> {
      * Sets the maximal pace of the generator. This limits how many updates the
      * generator will yield.
      *
-     * @param pace a positive integer that sets the maximal generator pace
+     * @param pace A positive integer that sets the maximal generator pace
      */
     setGeneratorPace(pace: number): void
     /**
@@ -60,8 +60,8 @@ export interface UpdateSource<Y> {
 /**
  * Creates an update source based on the given update supplier.
  *
- * @param supplier an update supplier to use for requesting updates
- * @returns an update source
+ * @param supplier An update supplier to use for requesting updates
+ * @returns An update source
  */
 export function createSource<Y>(supplier: UpdateSupplier<Y>): UpdateSource<Y> {
     let active = false

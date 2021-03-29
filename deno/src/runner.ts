@@ -1,5 +1,5 @@
 import { createConcurrentSink, SinkOptions, UpdateSink } from './sink.ts'
-import { createSource, UpdateSource, UpdateSupplier } from './source.ts'
+import { createSource, UpdateSource } from './source.ts'
 
 /**
  * This handle gives you control over a runner. It allows you to stop the bot,
@@ -67,11 +67,11 @@ interface BotAdapter<Y, R> {
  * Confer the grammY documentation to learn more about how to scale a bot with
  * grammY.
  *
- * @param bot a grammY bot
- * @param concurrency maximal number of updates to process concurrently
- * @param sourceOptions options to pass to `getUpdates` calls
- * @param sinkOptions further configuration options
- * @returns a handle to manage your running bot
+ * @param bot A grammY bot
+ * @param concurrency Maximal number of updates to process concurrently
+ * @param sourceOptions Options to pass to `getUpdates` calls
+ * @param sinkOptions Further configuration options
+ * @returns A handle to manage your running bot
  */
 export function run<Y extends { update_id: number }, R>(
     bot: BotAdapter<Y, R>,
@@ -131,11 +131,9 @@ export function run<Y extends { update_id: number }, R>(
  * them to the supplied sink. Returns a handle that lets you control the runner,
  * e.g. start it.
  *
- * Note that once you stop the runner, it will close its update source.
- *
- * @param source the source of updates
- * @param sink the sink for updates
- * @returns a handle to start and manage your bot
+ * @param source The source of updates
+ * @param sink The sink for updates
+ * @returns A handle to start and manage your bot
  */
 export function createRunner<Y>(
     source: UpdateSource<Y>,
@@ -152,7 +150,7 @@ export function createRunner<Y>(
                 if (!running) break
                 source.setGeneratorPace(capacity)
             }
-        } catch (e) {
+        } catch {
             // Error is thrown when `stop` is called, so we just leave this
             // empty. Custom errors should be handled by the bot before they
             // reach us. This is the case for the default `run` implementation.

@@ -38,8 +38,8 @@
  * provide the same function to determine constraints as you use to resolve the
  * session key.
  *
- * @param constraint function that determines the constraints of an update
- * @returns sequetializing middleware to be installed on the bot
+ * @param constraint Function that determines the constraints of an update
+ * @returns Sequetializing middleware to be installed on the bot
  */
 export function sequentialize<C>(constraint: (ctx: C) => string | string[]) {
     const map = new Map<string, Promise<unknown>>()
