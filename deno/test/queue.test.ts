@@ -113,6 +113,28 @@ Deno.test(
 )
 
 Deno.test(
+    'should create snapshots',
+    test(async t => {
+        const values = [...'abc']
+        let r: () => void
+        const promise = new Promise<void>(resolve => (r = resolve))
+        const q = new DecayingDeque<string>(
+            1000,
+            () => promise,
+            true,
+            () => t.fail(),
+            () => t.fail()
+        )
+        t.assertEquals(q.pendingTasks(), [])
+        await q.add(values).then(() => r())
+        t.assertEquals(q.pendingTasks(), values)
+        await promise
+        t.assertEquals(q.pendingTasks(), [])
+        t.pass()
+    })
+)
+
+Deno.test(
     'should process delayed updates from different calls',
     test(async t => {
         let res = ''

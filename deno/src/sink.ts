@@ -36,6 +36,17 @@ export interface UpdateSink<Y> {
      * value is positive.
      */
     handle: (updates: Y[]) => Promise<number>
+    /**
+     * Takes a snapshot of the sink. This synchronously returns all tasks that
+     * are currently being processed, in the order they were added.
+     *
+     * In the context of grammY, this can be useful if the runner must be
+     * terminated gracefully but shall not wait for the middleware to complete,
+     * for instance because some middleware performs long-running operations.
+     * You can then store the updates in order to process them again if desired,
+     * without losing data.
+     */
+    snapshot: () => Y[]
 }
 
 /**
@@ -90,6 +101,7 @@ export function createSequentialSink<Y, R = unknown>(
             for (let i = 0; i < len; i++) await q.add([updates[i]!])
             return Infinity
         },
+        snapshot: () => q.pendingTasks(),
     }
 }
 
@@ -126,6 +138,7 @@ export function createBatchSink<Y, R = unknown>(
     const constInf = () => Infinity
     return {
         handle: updates => q.add(updates).then(constInf),
+        snapshot: () => q.pendingTasks(),
     }
 }
 
@@ -159,5 +172,6 @@ export function createConcurrentSink<Y, R = unknown>(
     )
     return {
         handle: updates => q.add(updates),
+        snapshot: () => q.pendingTasks(),
     }
 }
