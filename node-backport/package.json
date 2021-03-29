@@ -1,7 +1,7 @@
 {
   "name": "@grammyjs/runner",
   "description": "Scale grammY bots that use long polling",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "author": "KnorpelSenf",
   "license": "MIT",
   "engines": {
