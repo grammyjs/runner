@@ -41,11 +41,15 @@
  * @param constraint Function that determines the constraints of an update
  * @returns Sequetializing middleware to be installed on the bot
  */
-export function sequentialize<C>(constraint: (ctx: C) => string | string[]) {
+export function sequentialize<C>(
+    constraint: (ctx: C) => string | string[] | undefined
+) {
     const map = new Map<string, Promise<unknown>>()
     return async (ctx: C, next: () => Promise<void>) => {
         const con = constraint(ctx)
-        const cs = (Array.isArray(con) ? con : [con]).filter(cs => !!cs)
+        const cs = (Array.isArray(con) ? con : [con]).filter(
+            (cs): cs is string => !!cs
+        )
         if (cs.length > 0) {
             const immediate = Promise.resolve()
             const ps = cs
