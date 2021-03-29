@@ -84,7 +84,7 @@ export function run<Y extends { update_id: number }, R>(
 ): RunnerHandle {
     let offset = 0
     async function fetchUpdates(batchSize: number, signal: AbortSignal) {
-        const limit = Math.max(100, Math.min(1, batchSize))
+        const limit = Math.max(1, Math.min(100, batchSize))
         const args = {
             timeout: 30,
             ...sourceOptions,
