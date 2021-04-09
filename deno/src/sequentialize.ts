@@ -39,7 +39,7 @@
  * session key.
  *
  * @param constraint Function that determines the constraints of an update
- * @returns Sequetializing middleware to be installed on the bot
+ * @returns Sequentializing middleware to be installed on the bot
  */
 export function sequentialize<C>(
     constraint: (ctx: C) => string | string[] | undefined
