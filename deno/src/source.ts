@@ -80,6 +80,7 @@ export function createSource<Y>(supplier: UpdateSupplier<Y>): UpdateSource<Y> {
             try {
                 yield await supplier.supply(pace, controller.signal)
             } catch (e) {
+                if (!controller.signal.aborted) throw e
                 close()
                 break
             }

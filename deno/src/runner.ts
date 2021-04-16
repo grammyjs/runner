@@ -2,14 +2,36 @@ import { createConcurrentSink, SinkOptions, UpdateSink } from './sink.ts'
 import { createSource, UpdateSource } from './source.ts'
 
 /**
+ * Options to be passed to `run(bot)`,
+ */
+export interface RunnerOptions {
+    /**
+     * When a call to `getUpdates` fails, this option specifies the umber of
+     * milliseconds that the runner should keep on retrying the calls.
+     */
+    maxRetryTime?: number
+    /**
+     * Time to wait between retries of calls to `getUpdates`. Can be a number of
+     * milliseconds to wait. Can be 'exponential' or 'quadratic' for increasing
+     * backoff starting at 100 milliseconds.
+     */
+    retryInterval?: 'exponential' | 'quadratic' | number
+    /**
+     * The runner logs all errors from `getUpdates` calls via `console.error`.
+     * Set this option to `false` to suppress output.
+     */
+    silent?: boolean
+}
+
+/**
  * This handle gives you control over a runner. It allows you to stop the bot,
  * start it again, and check whether it is running.
  */
 export interface RunnerHandle {
     /**
-     * Starts the bot. Note that calling `run` will automatically do this for you,
-     * so you only have to call `start` if you create a runner yourself with
-     * `createRunner`.
+     * Starts the bot. Note that calling `run` will automatically do this for
+     * you, so you only have to call `start` if you create a runner yourself
+     * with `createRunner`.
      */
     start: () => void
     /**
@@ -39,7 +61,7 @@ export interface RunnerHandle {
 
 /**
  * Adapter interface that specifies a minimal structure a bot has to obey in
- * order for `run` to be able to run it. All grammY bot automatically conform
+ * order for `run` to be able to run it. All grammY bots automatically conform
  * with this structure.
  */
 interface BotAdapter<Y, R> {
@@ -64,12 +86,14 @@ interface BotAdapter<Y, R> {
  * thousand per hour), or if your bot has long-running operations such as large
  * file transfers.
  *
- * Confer the grammY documentation to learn more about how to scale a bot with
- * grammY.
+ * Confer the grammY
+ * [documentation](https://grammy.netlify.app/advanced/runner.html) to learn
+ * more about how to scale a bot with grammY.
  *
  * @param bot A grammY bot
  * @param concurrency Maximal number of updates to process concurrently
  * @param sourceOptions Options to pass to `getUpdates` calls
+ * @param runnerOptions Options for retry behavior of `getUpdates` calls
  * @param sinkOptions Further configuration options
  * @returns A handle to manage your running bot
  */
@@ -77,25 +101,23 @@ export function run<Y extends { update_id: number }, R>(
     bot: BotAdapter<Y, R>,
     concurrency = 500,
     sourceOptions: any = {},
+    runnerOptions: RunnerOptions = {},
     sinkOptions: SinkOptions<Y> = {
         timeout: Infinity,
         timeoutHandler: () => {},
     }
 ): RunnerHandle {
-    let offset = 0
-    async function fetchUpdates(batchSize: number, signal: AbortSignal) {
-        const limit = Math.max(1, Math.min(100, batchSize))
-        const args = {
-            timeout: 30,
-            ...sourceOptions,
-            offset,
-            limit,
-        }
-        const updates = await bot.api.getUpdates(args, signal)
-        const lastId = updates[updates.length - 1]?.update_id
-        if (lastId !== undefined) offset = lastId + 1
-        return updates
-    }
+    runnerOptions.maxRetryTime ??= 15 * 60 * 60 * 1000 // 15 hours in milliseconds
+    runnerOptions.retryInterval ??= 'exponential'
+
+    // create update fetch function
+    const fetchUpdates = createUpdateFetcher(
+        bot,
+        runnerOptions.maxRetryTime,
+        runnerOptions.retryInterval,
+        sourceOptions,
+        runnerOptions.silent
+    )
 
     // create source
     const source = createSource({
@@ -120,10 +142,71 @@ export function run<Y extends { update_id: number }, R>(
         concurrency,
         sinkOptions
     )
+
     // launch
     const runner = createRunner(source, sink)
     runner.start()
     return runner
+}
+
+function createUpdateFetcher<Y extends { update_id: number }, R>(
+    bot: BotAdapter<Y, R>,
+    maxRetryTime: number,
+    retryInterval: 'exponential' | 'quadratic' | number,
+    sourceOptions: any,
+    silent = false
+) {
+    const backoff: (t: number) => number =
+        retryInterval === 'exponential'
+            ? t => t + t
+            : retryInterval === 'quadratic'
+            ? t => t + 100
+            : t => t
+    const initialRetryIn =
+        typeof retryInterval === 'number' ? retryInterval : 100
+
+    let offset = 0
+    async function fetchUpdates(batchSize: number, signal: AbortSignal) {
+        const args = {
+            timeout: 30,
+            ...sourceOptions,
+            offset,
+            limit: Math.max(1, Math.min(100, batchSize)),
+        }
+
+        const latestRetry = Date.now() + maxRetryTime
+        let retryIn = initialRetryIn
+
+        let updates: Y[] | undefined
+        do {
+            try {
+                updates = await bot.api.getUpdates(args, signal)
+            } catch (error) {
+                // do not retry if stopped
+                if (signal.aborted) throw error
+
+                if (!silent) {
+                    console.error(
+                        '[grammY runner] Error while fetching updates:'
+                    )
+                    console.error('[grammY runner]', error)
+                }
+                if (Date.now() + retryIn < latestRetry) {
+                    await new Promise(r => setTimeout(r, retryIn))
+                    retryIn = backoff(retryIn)
+                } else {
+                    // do not retry for longer than `maxRetryTime`
+                    throw error
+                }
+            }
+        } while (updates === undefined)
+
+        const lastId = updates[updates.length - 1]?.update_id
+        if (lastId !== undefined) offset = lastId + 1
+        return updates
+    }
+
+    return fetchUpdates
 }
 
 /**
