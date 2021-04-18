@@ -109,7 +109,7 @@ We are always happy to hear from people who maintain large bots so we can improv
 
 ## Resources
 
-### [grammY Runner in the grammY documentation](https://grammy.netlify.app/advanced/runner.html)
+### [grammY Runner in the grammY documentation](https://grammy.dev/advanced/runner.html)
 
 —more verbose documentation about concurrency in grammY.
 
