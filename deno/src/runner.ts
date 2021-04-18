@@ -87,7 +87,7 @@ interface BotAdapter<Y, R> {
  * file transfers.
  *
  * Confer the grammY
- * [documentation](https://grammy.netlify.app/advanced/runner.html) to learn
+ * [documentation](https://grammy.dev/advanced/runner.html) to learn
  * more about how to scale a bot with grammY.
  *
  * @param bot A grammY bot
