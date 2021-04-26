@@ -58,7 +58,7 @@ This makes everything nice and tidy and your code is very predictable.
 As soon as you enter the world of concurrency, several updates can be processed simultaneously.
 If a user sends two messages to your bot in the same instant, you cannot assume that the first message will be done processing before the second one starts to be processed.
 
-The main point where this can clash is when you use sessions, which may run into a write-after-read hazard.
+The main point where this can clash is when you use [sessions](https://grammy.dev/plugins/session.html), which may run into a write-after-read hazard.
 Imagine this sequence of events:
 
 1. Alice sends message A
