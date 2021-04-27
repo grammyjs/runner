@@ -58,7 +58,7 @@ This makes everything nice and tidy and your code is very predictable.
 As soon as you enter the world of concurrency, several updates can be processed simultaneously.
 If a user sends two messages to your bot in the same instant, you cannot assume that the first message will be done processing before the second one starts to be processed.
 
-The main point where this can clash is when you use [sessions](https://grammy.dev/plugins/session.html), which may run into a write-after-read hazard.
+The main point where this can clash is when you use [sessions](/plugins/session.html), which may run into a write-after-read hazard.
 Imagine this sequence of events:
 
 1. Alice sends message A
@@ -71,14 +71,16 @@ Imagine this sequence of events:
 8. Bot is done processing B, and writes new session to database, hence overwriting the changes performed during processing A.
    Data loss due to WAR hazard!
 
-To avoid this dangerous race condition, we have to make sure that updates that access the same session data are processed in sequence.
-
-> Note: You could also use database transactions for your sessions, but then you can only detect the hazard and not prevent it.
-> How would you recover?
+> Note: You could try use database transactions for your sessions, but then you can only detect the hazard and not prevent it.
+> Trying to use a lock instead would effectively eliminate all concurrency.
 > It is much easier to avoid the hazard in the first place.
 
+Most other session systems of web frameworks simply accept the risk of race conditions, as they do not happen too frequently on the web.
+However, we do not want this because Telegram bots are much more likely to experience clashes of parallel requests for the same session key.
+Hence, we have to make sure that updates that access the same session data are processed in sequence in order to avoid this dangerous race condition.
+
 grammY runner ships with `sequentialize()` middleware which makes sure that updates that clash are processed in sequence.
-You can pass it the very same function that you use to determine the session key.
+You can configure it with the very same function that you use to determine the session key.
 It will then avoid the above race condition by slowing down those (and only those) updates that would cause a collision.
 
 ```ts
