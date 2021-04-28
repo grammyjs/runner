@@ -73,7 +73,6 @@ export function createSource<Y>(supplier: UpdateSupplier<Y>): UpdateSource<Y> {
     let pace = Infinity
 
     async function* worker() {
-        console.log('asdf', supplier)
         active = true
         do {
             controller = new AbortController()
