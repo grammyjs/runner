@@ -122,6 +122,7 @@ export function run<Y extends { update_id: number }, R>(
     // create source
     const source = createSource({
         supply: async function (batchSize, signal) {
+            console.log('supply!')
             if (bot.init !== undefined) await bot.init()
             const updates = await fetchUpdates(batchSize, signal)
             this.supply = fetchUpdates
@@ -185,6 +186,7 @@ export function createUpdateFetcher<Y extends { update_id: number }, R>(
 
     let offset = 0
     async function fetchUpdates(batchSize: number, signal: AbortSignal) {
+        console.log('fetching')
         const args = {
             timeout: 30,
             ...sourceOptions,
@@ -251,10 +253,10 @@ export function createRunner<Y>(
                 if (!running) break
                 source.setGeneratorPace(capacity)
             }
-        } catch {
-            // Error is thrown when `stop` is called, so we just leave this
-            // empty. Custom errors should be handled by the bot before they
-            // reach us. This is the case for the default `run` implementation.
+        } catch (e) {
+            // Error is thrown when `stop` is called, so we only rethrow the
+            // error if the bot was not already stopped intentionally before.
+            if (running) throw e
         }
         running = false
         task = undefined
@@ -262,6 +264,7 @@ export function createRunner<Y>(
 
     return {
         start: () => {
+            console.log('whut')
             running = true
             task = runner()
         },

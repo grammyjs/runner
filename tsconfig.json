@@ -16,5 +16,8 @@
         "skipLibCheck": true,
         "target": "es2019"
     },
-    "include": ["src/"]
+    "include": ["./src/"],
+    "deno2node": {
+        "shim": "./src/node-shim.ts"
+    }
 }

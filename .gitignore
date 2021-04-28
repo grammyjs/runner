@@ -22,5 +22,4 @@ package-lock.json
 
 # Build output
 .tsbuildinfo
-src/
 out/
