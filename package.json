@@ -12,7 +12,7 @@
         "url": "https://github.com/grammyjs/runner"
     },
     "scripts": {
-        "build": "deno2node tsconfig.json",
+        "build": "deno run --unstable --allow-read --allow-write https://raw.githubusercontent.com/wojpawlik/deno2node/a636235a8ac1ea3b072b8a299a00ceae07df63c0/src/cli.ts tsconfig.json",
         "test": "echo \"Error: no test specified\" && exit 1"
     },
     "dependencies": {
