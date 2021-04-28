@@ -2,8 +2,6 @@
 
 ---
 
-> This project has not reached 1.0. The basic functionality should work pretty well, but there might still bugs or unexpected behavior.
-
 While the core of [grammY](https://github.com/grammyjs/grammY) is extremely efficient, the package does not ship with a built-in mechanism for long polling at scale.
 (It does scale well with webhooks, though.)
 The grammY runner solves this by providing you with a sophisticated mechanism that can pull updates concurrently from the Telegram servers, and in turn execute your bot's middleware stack concurrently, all while catching errors, timeouts, and giving you full control over how much load is applied to your server.
@@ -122,4 +120,3 @@ We are always happy to hear from people who maintain large bots so we can improv
 ### [grammY Example Bots](https://github.com/grammyjs/examples)
 
 —repository full of example bots, look our for those that demonstrate how to use grammY runner.
-
