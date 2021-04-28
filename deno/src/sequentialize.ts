@@ -1,3 +1,8 @@
+interface Clot {
+    chain: Promise<unknown>
+    len: number
+}
+
 /**
  * Using a runner for grammY allows your bot to run middleware concurrently.
  * This has the benefit that multiple messages can be processed concurrently,
@@ -44,23 +49,41 @@
 export function sequentialize<C>(
     constraint: (ctx: C) => string | string[] | undefined
 ) {
-    const map = new Map<string, Promise<unknown>>()
-    return async (ctx: C, next: () => Promise<void>) => {
+    const map = new Map<string, Clot>()
+    return async (ctx: C, next: () => void | Promise<void>) => {
         const con = constraint(ctx)
         const cs = (Array.isArray(con) ? con : [con]).filter(
             (cs): cs is string => !!cs
         )
-        if (cs.length > 0) {
-            const immediate = Promise.resolve()
-            const ps = cs
-                .map(c => map.get(c) ?? immediate)
-                .map(
-                    p => new Promise<void>(resolve => p.finally(resolve))
-                )
-            const collected = Promise.all(ps)
-            cs.forEach(c => map.set(c, collected))
-            await collected
+        const prev = cs.map(c => {
+            let v = map.get(c)
+            if (v === undefined) {
+                v = { chain: Promise.resolve(), len: 0 }
+                map.set(c, v)
+            }
+            return v
+        })
+        const clot = Promise.all(
+            prev.map(
+                p => new Promise<void>(resolve => p.chain.finally(resolve))
+            )
+        )
+        async function run() {
+            await clot // cannot reject
+            try {
+                await next()
+            } finally {
+                cs.forEach(c => {
+                    const cl = map.get(c)
+                    if (cl !== undefined && --cl.len === 0) map.delete(c)
+                })
+            }
         }
-        await next()
+        const task: Promise<void> = run()
+        prev.forEach(pr => {
+            pr.len++
+            pr.chain = task
+        })
+        await task // rethrows error
     }
 }
