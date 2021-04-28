@@ -1,39 +1,5 @@
 import { DecayingDeque } from '../src/queue.ts'
-import {
-    assertThrows as assertThrows_,
-    assertEquals as assertEquals_,
-    assert as assert_,
-} from 'https://deno.land/std@0.87.0/testing/asserts.ts'
-
-interface T {
-    pass: () => void
-    fail: () => void
-    assert: typeof assert_
-    assertThrows: typeof assertThrows_
-    assertEquals: typeof assertEquals_
-}
-function test(fn: (t: T) => void | Promise<void>): () => Promise<void> {
-    return () =>
-        new Promise(async (resolve, reject) => {
-            function c<X extends (...args: any[]) => any>(fn: X) {
-                return (...args: any[]) => {
-                    try {
-                        return fn(...args)
-                    } catch (error) {
-                        reject(error)
-                    }
-                }
-            }
-            const t: T = {
-                pass: resolve,
-                fail: reject,
-                assertThrows: c(assertThrows_),
-                assert: c(assert_),
-                assertEquals: c(assertEquals_),
-            }
-            await fn(t)
-        })
-}
+import { T, test } from './promise-test-helpers.ts'
 
 Deno.test(
     'should allow infinite timeouts',
