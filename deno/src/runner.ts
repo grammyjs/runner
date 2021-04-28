@@ -149,7 +149,25 @@ export function run<Y extends { update_id: number }, R>(
     return runner
 }
 
-function createUpdateFetcher<Y extends { update_id: number }, R>(
+/**
+ * Takes a grammY bot and returns an update fetcher function for it. The
+ * returned function has built-in retrying behavior that can be configured.
+ * After every successful fetching operation, the `offset` parameter is
+ * correctly incremented. As a reult, you can simply invoke the created function
+ * multiple times in a row, and you will obtain new updates every time.
+ *
+ * The update fetcher function has a default long polling timeout of 30 seconds.
+ * Specify `sourceOptions` to configure what values to pass to `getUpdates`
+ * calls.
+ *
+ * @param bot A grammY bot
+ * @param maxRetryTime Maximum time to keep on retrying before throwing
+ * @param retryInterval In what intervals to perform retries
+ * @param sourceOptions Arbitrary options to pass on to the calls
+ * @param silent Suppress logging errors to `console.error`
+ * @returns A function that can fetch updates with automatic retry behavior
+ */
+export function createUpdateFetcher<Y extends { update_id: number }, R>(
     bot: BotAdapter<Y, R>,
     maxRetryTime: number,
     retryInterval: 'exponential' | 'quadratic' | number,
