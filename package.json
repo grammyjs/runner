@@ -7,9 +7,13 @@
     "engines": {
         "node": ">=12.20.0 || >=14.13.1"
     },
+    "homepage": "https://grammy.dev/plugins/runner.html",
     "repository": {
         "type": "git",
         "url": "https://github.com/grammyjs/runner"
+    },
+    "bugs": {
+        "url": "https://github.com/grammyjs/runner/issues"
     },
     "scripts": {
         "build": "deno2node tsconfig.json"
