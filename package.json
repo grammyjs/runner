@@ -12,19 +12,21 @@
         "url": "https://github.com/grammyjs/runner"
     },
     "scripts": {
-        "build": "deno run --unstable --allow-read --allow-write https://raw.githubusercontent.com/wojpawlik/deno2node/a636235a8ac1ea3b072b8a299a00ceae07df63c0/src/cli.ts tsconfig.json",
-        "test": "echo \"Error: no test specified\" && exit 1"
+        "build": "deno2node tsconfig.json"
     },
     "dependencies": {
         "abort-controller": "^3.0.0"
+    },
+    "devDependencies": {
+        "deno2node": "0.4.0"
     },
     "files": [
         "out/"
     ],
     "main": "./out/mod.js",
+    "type": "commonjs",
     "exports": {
-        "import": "./out/esm/wrapper.js",
-        "require": "./out/mod.js"
+        ".": "./out/mod.js"
     },
     "keywords": [
         "grammy",
@@ -33,8 +35,5 @@
         "api",
         "long",
         "polling"
-    ],
-    "devDependencies": {
-        "deno2node": "^0.2.0"
-    }
+    ]
 }
