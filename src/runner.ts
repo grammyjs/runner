@@ -6,7 +6,7 @@ import { createSource, UpdateSource } from './source.ts'
  */
 export interface RunnerOptions {
     /**
-     * When a call to `getUpdates` fails, this option specifies the umber of
+     * When a call to `getUpdates` fails, this option specifies the number of
      * milliseconds that the runner should keep on retrying the calls.
      */
     maxRetryTime?: number
@@ -86,9 +86,8 @@ interface BotAdapter<Y, R> {
  * thousand per hour), or if your bot has long-running operations such as large
  * file transfers.
  *
- * Confer the grammY
- * [documentation](https://grammy.dev/advanced/runner.html) to learn
- * more about how to scale a bot with grammY.
+ * Confer the grammY [documentation](https://grammy.dev/advanced/runner.html) to
+ * learn more about how to scale a bot with grammY.
  *
  * @param bot A grammY bot
  * @param concurrency Maximal number of updates to process concurrently
