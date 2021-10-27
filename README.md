@@ -109,11 +109,11 @@ We are always happy to hear from people who maintain large bots so we can improv
 
 ## Resources
 
-### [grammY Runner in the grammY documentation](https://grammy.dev/plugins/runner.html)
+### [grammY runner in the grammY documentation](https://grammy.dev/plugins/runner.html)
 
 —more verbose documentation about concurrency in grammY.
 
-### [grammY Runner API Reference](https://doc.deno.land/https/deno.land/x/grammy_runner/mod.ts)
+### [grammY runner API Reference](https://doc.deno.land/https/deno.land/x/grammy_runner/mod.ts)
 
 —documentation of everything that grammY runner exports.
 
