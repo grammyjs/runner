@@ -82,20 +82,30 @@ You can configure it with the very same function that you use to determine the s
 It will then avoid the above race condition by slowing down those (and only those) updates that would cause a collision.
 
 ```ts
-import { Bot, Context, session } from "grammy";
+import { Bot, Context, session, SessionFlavor } from "grammy";
 import { run, sequentialize } from "@grammyjs/runner";
 
+// Define session data
+interface SessionData {
+  counter: 0
+}
+
 // Create bot
-const bot = new Bot("<token>");
+type MyContext = Context & SessionFlavor<SessionData>
+const bot = new Bot<MyContext>("<token>");
 
 /** Resolves the session key for a context object */
-function getSessionKey(ctx: Context) {
+function getSessionKey(ctx: MyContext) {
   return ctx.chat?.id.toString();
+}
+/** Creates an initial session data object */
+function initial(): SessionData {
+  return { counter: 0 }
 }
 
 // Sequentialize before accessing session data!
 bot.use(sequentialize(getSessionKey));
-bot.use(session({ getSessionKey }));
+bot.use(session({ getSessionKey, initial }));
 
 // Add the usual middleware, now with safe session support
 bot.on("message", (ctx) => ctx.reply("Got your message."));
