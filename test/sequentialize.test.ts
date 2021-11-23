@@ -16,11 +16,89 @@ Deno.test(
     test(async (t) => {
         const s = seq();
         await s(["p"], () => {
-            throw 0;
+            throw new Error("0");
         }).catch((err) => {
-            t.assertEquals(err, 0);
+            t.assertEquals(err.message, "0");
             t.pass();
         });
+    }),
+);
+
+Deno.test(
+    "should handle failing chained middleware",
+    test(async (t: T) => {
+        const s = seq();
+        let qx = false;
+        let err: Error | undefined;
+        const p = s(["p"], async () => {
+            await t.sleep(10);
+            throw (err = new Error("0"));
+        });
+        const q = s(["p"], async () => {
+            await t.sleep(10);
+            qx = true;
+        });
+        try {
+            await p;
+            t.fail();
+        } catch (e) {
+            t.assertEquals(err, e);
+        }
+        await q;
+        t.assert(qx);
+        t.pass();
+    }),
+);
+
+Deno.test(
+    "should handle multiple errors",
+    test(async (t: T) => {
+        const s = seq();
+
+        let pxs: boolean[] = [];
+        function makeResolve(...cs: string[]) {
+            const index = pxs.length;
+            pxs.push(false);
+            return s(cs, async () => {
+                await t.sleep(10);
+                pxs[index] = true;
+            });
+        }
+
+        let errs: Error[] = [];
+        function makeReject(...cs: string[]) {
+            return s(cs, async () => {
+                await t.sleep(10);
+                const err = new Error(cs.join(" & "));
+                errs.push(err);
+                throw err;
+            });
+        }
+
+        const ps: Promise<void>[] = []; // resolving promises
+        const pes: Promise<void>[] = []; // rejecting promises
+
+        ps.push(makeResolve("p", "x"));
+        ps.push(makeResolve("p", "y"));
+        pes.push(makeReject("p", "x"));
+        pes.push(makeReject("p", "y"));
+        ps.push(makeResolve("p", "x"));
+        ps.push(makeResolve("p", "y"));
+        pes.push(makeReject("p", "x"));
+        pes.push(makeReject("p", "y"));
+        ps.push(makeResolve("p", "x"));
+        ps.push(makeResolve("p", "y"));
+        pes.push(makeReject("p", "x"));
+        pes.push(makeReject("p", "y"));
+
+        let errCount = 0;
+        const caughtPes = pes.map((p) =>
+            p.catch((err) => (errCount++, t.assert(errs.includes(err))))
+        );
+        await Promise.all(ps.concat(caughtPes));
+        t.assert(pxs.every(Boolean));
+        t.assertEquals(errCount, 6);
+        t.pass();
     }),
 );
 
