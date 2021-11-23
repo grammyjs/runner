@@ -55,7 +55,7 @@ export function sequentialize<C>(
         const cs = (Array.isArray(con) ? con : [con]).filter(
             (cs): cs is string => !!cs,
         );
-        const prev = cs.map((c) => {
+        const clots = cs.map((c) => {
             let v = map.get(c);
             if (v === undefined) {
                 v = { chain: Promise.resolve(), len: 0 };
@@ -63,13 +63,14 @@ export function sequentialize<C>(
             }
             return v;
         });
-        const clot = Promise.all(
-            prev.map(
-                (p) => new Promise<void>((resolve) => p.chain.finally(resolve)),
-            ),
-        );
+        const allClots = Promise.all(clots.map((p) => p.chain));
         async function run() {
-            await clot; // cannot reject
+            try {
+                await allClots;
+            } catch {
+                // One of the previous middleware rejected. It is also `await`ed
+                // there, so we simply ignore the error here
+            }
             try {
                 await next();
             } finally {
@@ -80,7 +81,7 @@ export function sequentialize<C>(
             }
         }
         const task: Promise<void> = run();
-        prev.forEach((pr) => {
+        clots.forEach((pr) => {
             pr.len++;
             pr.chain = task;
         });
