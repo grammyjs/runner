@@ -1,5 +1,5 @@
-import { createConcurrentSink, SinkOptions, UpdateSink } from './sink.ts'
-import { createSource, UpdateSource } from './source.ts'
+import { createConcurrentSink, SinkOptions, UpdateSink } from "./sink.ts";
+import { createSource, UpdateSource } from "./source.ts";
 
 /**
  * Options to be passed to `run(bot)`,
@@ -9,18 +9,18 @@ export interface RunnerOptions {
      * When a call to `getUpdates` fails, this option specifies the number of
      * milliseconds that the runner should keep on retrying the calls.
      */
-    maxRetryTime?: number
+    maxRetryTime?: number;
     /**
      * Time to wait between retries of calls to `getUpdates`. Can be a number of
      * milliseconds to wait. Can be 'exponential' or 'quadratic' for increasing
      * backoff starting at 100 milliseconds.
      */
-    retryInterval?: 'exponential' | 'quadratic' | number
+    retryInterval?: "exponential" | "quadratic" | number;
     /**
      * The runner logs all errors from `getUpdates` calls via `console.error`.
      * Set this option to `false` to suppress output.
      */
-    silent?: boolean
+    silent?: boolean;
 }
 
 /**
@@ -33,7 +33,7 @@ export interface RunnerHandle {
      * you, so you only have to call `start` if you create a runner yourself
      * with `createRunner`.
      */
-    start: () => void
+    start: () => void;
     /**
      * Stops the bot. The bot will no longer fetch updates from Telegram, and it
      * will interrupt the currently pending `getUpdates` call.
@@ -42,7 +42,7 @@ export interface RunnerHandle {
      * running middleware is done executing. This means that you can `await
      * handle.stop()` to be sure that your bot really stopped completely.
      */
-    stop: () => Promise<void>
+    stop: () => Promise<void>;
     /**
      * Returns a promise that resolves as soon as the runner stops, either by
      * being stopped or by crashing. If the bot crashes, it means that the error
@@ -50,13 +50,13 @@ export interface RunnerHandle {
      * terminates. A runner handle does not give you access to errors thrown by
      * the bot. Returns `undefined` if and only if `isRunning` returns `false`.
      */
-    task: () => Promise<void> | undefined
+    task: () => Promise<void> | undefined;
     /**
      * Determines whether the bot is currently running or not. Note that this
      * will return `false` as soon as you call `stop` on the handle, even though
      * the promise returned by `stop` may not have resolved yet.
      */
-    isRunning: () => boolean
+    isRunning: () => boolean;
 }
 
 /**
@@ -65,15 +65,15 @@ export interface RunnerHandle {
  * with this structure.
  */
 interface BotAdapter<Y, R> {
-    init?: () => Promise<void>
-    handleUpdate: (update: Y) => Promise<void>
-    errorHandler: (error: R) => unknown
+    init?: () => Promise<void>;
+    handleUpdate: (update: Y) => Promise<void>;
+    errorHandler: (error: R) => unknown;
     api: {
         getUpdates: (
             args: { offset: number; limit: number; timeout: number },
-            signal: AbortSignal
-        ) => Promise<Y[]>
-    }
+            signal: AbortSignal,
+        ) => Promise<Y[]>;
+    };
 }
 
 /**
@@ -104,10 +104,10 @@ export function run<Y extends { update_id: number }, R>(
     sinkOptions: SinkOptions<Y> = {
         timeout: Infinity,
         timeoutHandler: () => {},
-    }
+    },
 ): RunnerHandle {
-    runnerOptions.maxRetryTime ??= 15 * 60 * 60 * 1000 // 15 hours in milliseconds
-    runnerOptions.retryInterval ??= 'exponential'
+    runnerOptions.maxRetryTime ??= 15 * 60 * 60 * 1000; // 15 hours in milliseconds
+    runnerOptions.retryInterval ??= "exponential";
 
     // create update fetch function
     const fetchUpdates = createUpdateFetcher(
@@ -115,37 +115,37 @@ export function run<Y extends { update_id: number }, R>(
         runnerOptions.maxRetryTime,
         runnerOptions.retryInterval,
         sourceOptions,
-        runnerOptions.silent
-    )
+        runnerOptions.silent,
+    );
 
     // create source
     const source = createSource({
         supply: async function (batchSize, signal) {
-            if (bot.init !== undefined) await bot.init()
-            const updates = await fetchUpdates(batchSize, signal)
-            this.supply = fetchUpdates
-            return updates
+            if (bot.init !== undefined) await bot.init();
+            const updates = await fetchUpdates(batchSize, signal);
+            this.supply = fetchUpdates;
+            return updates;
         },
-    })
+    });
 
     // create sink
     const sink = createConcurrentSink<Y, R>(
-        { consume: update => bot.handleUpdate(update) },
-        async error => {
+        { consume: (update) => bot.handleUpdate(update) },
+        async (error) => {
             try {
-                await bot.errorHandler(error)
+                await bot.errorHandler(error);
             } catch (error) {
-                printError(error)
+                printError(error);
             }
         },
         concurrency,
-        sinkOptions
-    )
+        sinkOptions,
+    );
 
     // launch
-    const runner = createRunner(source, sink)
-    runner.start()
-    return runner
+    const runner = createRunner(source, sink);
+    runner.start();
+    return runner;
 }
 
 /**
@@ -169,61 +169,61 @@ export function run<Y extends { update_id: number }, R>(
 export function createUpdateFetcher<Y extends { update_id: number }, R>(
     bot: BotAdapter<Y, R>,
     maxRetryTime: number,
-    retryInterval: 'exponential' | 'quadratic' | number,
+    retryInterval: "exponential" | "quadratic" | number,
     sourceOptions: any,
-    silent = false
+    silent = false,
 ) {
-    const backoff: (t: number) => number =
-        retryInterval === 'exponential'
-            ? t => t + t
-            : retryInterval === 'quadratic'
-            ? t => t + 100
-            : t => t
-    const initialRetryIn =
-        typeof retryInterval === 'number' ? retryInterval : 100
+    const backoff: (t: number) => number = retryInterval === "exponential"
+        ? (t) => t + t
+        : retryInterval === "quadratic"
+        ? (t) => t + 100
+        : (t) => t;
+    const initialRetryIn = typeof retryInterval === "number"
+        ? retryInterval
+        : 100;
 
-    let offset = 0
+    let offset = 0;
     async function fetchUpdates(batchSize: number, signal: AbortSignal) {
         const args = {
             timeout: 30,
             ...sourceOptions,
             offset,
             limit: Math.max(1, Math.min(100, batchSize)),
-        }
+        };
 
-        const latestRetry = Date.now() + maxRetryTime
-        let retryIn = initialRetryIn
+        const latestRetry = Date.now() + maxRetryTime;
+        let retryIn = initialRetryIn;
 
-        let updates: Y[] | undefined
+        let updates: Y[] | undefined;
         do {
             try {
-                updates = await bot.api.getUpdates(args, signal)
+                updates = await bot.api.getUpdates(args, signal);
             } catch (error) {
                 // do not retry if stopped
-                if (signal.aborted) throw error
+                if (signal.aborted) throw error;
 
                 if (!silent) {
                     console.error(
-                        '[grammY runner] Error while fetching updates:'
-                    )
-                    console.error('[grammY runner]', error)
+                        "[grammY runner] Error while fetching updates:",
+                    );
+                    console.error("[grammY runner]", error);
                 }
                 if (Date.now() + retryIn < latestRetry) {
-                    await new Promise(r => setTimeout(r, retryIn))
-                    retryIn = backoff(retryIn)
+                    await new Promise((r) => setTimeout(r, retryIn));
+                    retryIn = backoff(retryIn);
                 } else {
                     // do not retry for longer than `maxRetryTime`
-                    throw error
+                    throw error;
                 }
             }
-        } while (updates === undefined)
+        } while (updates === undefined);
 
-        const lastId = updates[updates.length - 1]?.update_id
-        if (lastId !== undefined) offset = lastId + 1
-        return updates
+        const lastId = updates[updates.length - 1]?.update_id;
+        if (lastId !== undefined) offset = lastId + 1;
+        return updates;
     }
 
-    return fetchUpdates
+    return fetchUpdates;
 }
 
 /**
@@ -237,60 +237,60 @@ export function createUpdateFetcher<Y extends { update_id: number }, R>(
  */
 export function createRunner<Y>(
     source: UpdateSource<Y>,
-    sink: UpdateSink<Y>
+    sink: UpdateSink<Y>,
 ): RunnerHandle {
-    let running = false
-    let task: Promise<void> | undefined
+    let running = false;
+    let task: Promise<void> | undefined;
 
     async function runner(): Promise<void> {
-        if (!running) return
+        if (!running) return;
         try {
             for await (const updates of source.generator()) {
-                const capacity = await sink.handle(updates)
-                if (!running) break
-                source.setGeneratorPace(capacity)
+                const capacity = await sink.handle(updates);
+                if (!running) break;
+                source.setGeneratorPace(capacity);
             }
         } catch (e) {
             // Error is thrown when `stop` is called, so we only rethrow the
             // error if the bot was not already stopped intentionally before.
             if (running) {
-                running = false
-                task = undefined
-                throw e
+                running = false;
+                task = undefined;
+                throw e;
             }
         }
-        running = false
-        task = undefined
+        running = false;
+        task = undefined;
     }
 
     return {
         start: () => {
-            running = true
-            task = runner()
+            running = true;
+            task = runner();
         },
         stop: () => {
-            const t = task!
-            running = false
-            task = undefined
-            source.close()
-            return t
+            const t = task!;
+            running = false;
+            task = undefined;
+            source.close();
+            return t;
         },
         task: () => task,
         isRunning: () => running && source.isActive(),
-    }
+    };
 }
 
 function printError(error: unknown) {
-    console.error('::: ERROR ERROR ERROR :::')
-    console.error()
-    console.error('The error handling of your bot threw')
-    console.error('an error itself! Make sure to handle')
-    console.error('all errors! Time:', new Date().toISOString())
-    console.error()
-    console.error('The default error handler rethrows all')
-    console.error('errors. Did you maybe forget to set')
-    console.error('an error handler with `bot.catch`?')
-    console.error()
-    console.error('Here is your error object:')
-    console.error(error)
+    console.error("::: ERROR ERROR ERROR :::");
+    console.error();
+    console.error("The error handling of your bot threw");
+    console.error("an error itself! Make sure to handle");
+    console.error("all errors! Time:", new Date().toISOString());
+    console.error();
+    console.error("The default error handler rethrows all");
+    console.error("errors. Did you maybe forget to set");
+    console.error("an error handler with `bot.catch`?");
+    console.error();
+    console.error("Here is your error object:");
+    console.error(error);
 }

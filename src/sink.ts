@@ -1,4 +1,4 @@
-import { DecayingDeque } from './queue.ts'
+import { DecayingDeque } from "./queue.ts";
 
 /**
  * Update consumers are objects that can process an update from the Telegram Bot
@@ -14,7 +14,7 @@ export interface UpdateConsumer<Y> {
      * Consumes an update and processes it. The returned promise should resolve as
      * soon as the processeing is complete.
      */
-    consume: (update: Y) => Promise<void>
+    consume: (update: Y) => Promise<void>;
 }
 
 /**
@@ -35,7 +35,7 @@ export interface UpdateSink<Y> {
      * integral number of updates that the update sink can handle, as soon as this
      * value is positive.
      */
-    handle: (updates: Y[]) => Promise<number>
+    handle: (updates: Y[]) => Promise<number>;
     /**
      * Takes a snapshot of the sink. This synchronously returns all tasks that
      * are currently being processed, in the order they were added.
@@ -46,7 +46,7 @@ export interface UpdateSink<Y> {
      * You can then store the updates in order to process them again if desired,
      * without losing data.
      */
-    snapshot: () => Y[]
+    snapshot: () => Y[];
 }
 
 /**
@@ -57,14 +57,14 @@ export interface SinkOptions<Y> {
      * Maximal number of milliseconds that an update may take to be processed by
      * the underlying sink.
      */
-    timeout: number
+    timeout: number;
     /**
      * Handler function that will be called with updates that process longer
      * than allowed by `timeout`. The second argument to the handler function
      * will be the unresolved promise. Note however that the timeout handler
      * itself has to be synchronous.
      */
-    timeoutHandler: (update: Y, task: Promise<void>) => void
+    timeoutHandler: (update: Y, task: Promise<void>) => void;
 }
 
 /**
@@ -86,23 +86,23 @@ export interface SinkOptions<Y> {
 export function createSequentialSink<Y, R = unknown>(
     handler: UpdateConsumer<Y>,
     errorHandler: (error: R) => Promise<void>,
-    options: SinkOptions<Y> = { timeout: Infinity, timeoutHandler: () => {} }
+    options: SinkOptions<Y> = { timeout: Infinity, timeoutHandler: () => {} },
 ): UpdateSink<Y> {
     const q = new DecayingDeque(
         options.timeout,
         handler.consume,
         false,
         errorHandler,
-        options.timeoutHandler
-    )
+        options.timeoutHandler,
+    );
     return {
-        handle: async updates => {
-            const len = updates.length
-            for (let i = 0; i < len; i++) await q.add([updates[i]!])
-            return Infinity
+        handle: async (updates) => {
+            const len = updates.length;
+            for (let i = 0; i < len; i++) await q.add([updates[i]!]);
+            return Infinity;
         },
         snapshot: () => q.pendingTasks(),
-    }
+    };
 }
 
 /**
@@ -126,20 +126,20 @@ export function createSequentialSink<Y, R = unknown>(
 export function createBatchSink<Y, R = unknown>(
     handler: UpdateConsumer<Y>,
     errorHandler: (error: R) => Promise<void>,
-    options: SinkOptions<Y> = { timeout: Infinity, timeoutHandler: () => {} }
+    options: SinkOptions<Y> = { timeout: Infinity, timeoutHandler: () => {} },
 ): UpdateSink<Y> {
     const q = new DecayingDeque(
         options.timeout,
         handler.consume,
         false,
         errorHandler,
-        options.timeoutHandler
-    )
-    const constInf = () => Infinity
+        options.timeoutHandler,
+    );
+    const constInf = () => Infinity;
     return {
-        handle: updates => q.add(updates).then(constInf),
+        handle: (updates) => q.add(updates).then(constInf),
         snapshot: () => q.pendingTasks(),
-    }
+    };
 }
 
 /**
@@ -161,17 +161,17 @@ export function createConcurrentSink<Y, R = unknown>(
     handler: UpdateConsumer<Y>,
     errorHandler: (error: R) => Promise<void>,
     concurrency = 500,
-    options: SinkOptions<Y> = { timeout: Infinity, timeoutHandler: () => {} }
+    options: SinkOptions<Y> = { timeout: Infinity, timeoutHandler: () => {} },
 ): UpdateSink<Y> {
     const q = new DecayingDeque(
         options.timeout,
         handler.consume,
         concurrency,
         errorHandler,
-        options.timeoutHandler
-    )
+        options.timeoutHandler,
+    );
     return {
-        handle: updates => q.add(updates),
+        handle: (updates) => q.add(updates),
         snapshot: () => q.pendingTasks(),
-    }
+    };
 }

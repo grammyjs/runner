@@ -87,20 +87,20 @@ import { run, sequentialize } from "@grammyjs/runner";
 
 // Define session data
 interface SessionData {
-  counter: 0
+    counter: 0;
 }
 
 // Create bot
-type MyContext = Context & SessionFlavor<SessionData>
+type MyContext = Context & SessionFlavor<SessionData>;
 const bot = new Bot<MyContext>("<token>");
 
 /** Resolves the session key for a context object */
 function getSessionKey(ctx: MyContext) {
-  return ctx.chat?.id.toString();
+    return ctx.chat?.id.toString();
 }
 /** Creates an initial session data object */
 function initial(): SessionData {
-  return { counter: 0 }
+    return { counter: 0 };
 }
 
 // Sequentialize before accessing session data!

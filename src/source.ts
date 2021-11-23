@@ -12,7 +12,7 @@ export interface UpdateSupplier<Y> {
      * as an array. The request should respect the given `AbortSignal`. If the
      * signal is raised, the currently pending request must be cancelled.
      */
-    supply: (batchSize: number, signal: AbortSignal) => Promise<Y[]>
+    supply: (batchSize: number, signal: AbortSignal) => Promise<Y[]>;
 }
 
 /**
@@ -37,24 +37,24 @@ export interface UpdateSource<Y> {
     /**
      * Returns this source's async generator.
      */
-    generator: () => AsyncGenerator<Y[]>
+    generator: () => AsyncGenerator<Y[]>;
     /**
      * Sets the maximal pace of the generator. This limits how many updates the
      * generator will yield.
      *
      * @param pace A positive integer that sets the maximal generator pace
      */
-    setGeneratorPace(pace: number): void
+    setGeneratorPace(pace: number): void;
     /**
      * Returns whether the source is currently active.
      */
-    isActive: () => boolean
+    isActive: () => boolean;
     /**
      * Closes the source, i.e. interrupts the current request for more updates.
      * The source can be re-opened by simply beginning to iterate over the
      * generator again.
      */
-    close: () => void
+    close: () => void;
 }
 
 /**
@@ -64,39 +64,39 @@ export interface UpdateSource<Y> {
  * @returns An update source
  */
 export function createSource<Y>(supplier: UpdateSupplier<Y>): UpdateSource<Y> {
-    let active = false
-    let controller: AbortController
+    let active = false;
+    let controller: AbortController;
     const listener = () => {
-        active = false
-    }
-    let w = worker()
-    let pace = Infinity
+        active = false;
+    };
+    let w = worker();
+    let pace = Infinity;
 
     async function* worker() {
-        active = true
+        active = true;
         do {
-            controller = new AbortController()
-            controller.signal.addEventListener('abort', listener)
+            controller = new AbortController();
+            controller.signal.addEventListener("abort", listener);
             try {
-                yield await supplier.supply(pace, controller.signal)
+                yield await supplier.supply(pace, controller.signal);
             } catch (e) {
-                if (!controller.signal.aborted) throw e
-                close()
-                break
+                if (!controller.signal.aborted) throw e;
+                close();
+                break;
             }
-        } while (active)
+        } while (active);
     }
     function close() {
-        active = false
-        controller.abort()
-        w = worker()
-        pace = Infinity
+        active = false;
+        controller.abort();
+        w = worker();
+        pace = Infinity;
     }
 
     return {
         generator: () => w,
-        setGeneratorPace: newPace => (pace = newPace),
+        setGeneratorPace: (newPace) => (pace = newPace),
         isActive: () => active,
         close: () => close(),
-    }
+    };
 }

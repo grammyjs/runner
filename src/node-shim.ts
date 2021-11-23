@@ -1,1 +1,1 @@
-export * from 'abort-controller'
+export * from "abort-controller";

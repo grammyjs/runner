@@ -1,5 +1,5 @@
 // Maximal valid value that can be passed to `setTimeout`
-const MAX_TIMEOUT_VALUE = ~(1 << 31) // equals (2 ** 31 - 1)
+const MAX_TIMEOUT_VALUE = ~(1 << 31); // equals (2 ** 31 - 1)
 /**
  * A drift is an element in a doubly linked list, and it stores a task. A task
  * is represented as a Promise. Drifts remove themselves from the queue (they
@@ -22,15 +22,15 @@ const MAX_TIMEOUT_VALUE = ~(1 << 31) // equals (2 ** 31 - 1)
  */
 interface Drift<Y> {
     /** Previous drift in the queue. `null` iff this drift is the head element. */
-    prev: Drift<Y> | null
+    prev: Drift<Y> | null;
     /** Next drift in the queue. `null` iff this drift is the tail element. */
-    next: Drift<Y> | null
+    next: Drift<Y> | null;
 
     /**
      * Task of the drift. Contains logic that removes this drift from the queue as
      * soon as the task completes by itself (either resolves or rejects).
      */
-    task: Promise<void>
+    task: Promise<void>;
 
     /**
      * Timestamp (milliseconds since The Epoch) when this drift was added. This
@@ -40,9 +40,9 @@ interface Drift<Y> {
      * The timestamp will be set to `-1` when the drift is removed from the queue,
      * in other words, checking `date > 0` serves as a containment test.
      */
-    date: number
+    date: number;
     /** Reference to the source element that was used to start the task */
-    elem: Y
+    elem: Y;
 }
 
 /**
@@ -72,11 +72,11 @@ export class DecayingDeque<Y, R = unknown> {
      * Number of drifts in the queue. Equivalent to the number of currently
      * pending tasks.
      */
-    private len: number = 0
+    private len: number = 0;
     /** Head element (oldest), `null` iff the queue is empty */
-    private head: Drift<Y> | null = null
+    private head: Drift<Y> | null = null;
     /** Tail element (newest), `null` iff the queue is empty */
-    private tail: Drift<Y> | null = null
+    private tail: Drift<Y> | null = null;
 
     /**
      * Number of currently pending tasks that we strive for (`add` calls will
@@ -85,20 +85,20 @@ export class DecayingDeque<Y, R = unknown> {
      * In the context of `grammy`, it is possible to `await` calls to `add` to
      * determine when to fetch more updates.
      */
-    public readonly concurrency: number
+    public readonly concurrency: number;
     /**
      * Timer that waits for the head element to time out, will be rescheduled
      * whenever the head element changes. It is `undefined` iff the queue is
      * empty.
      */
-    private timer: ReturnType<typeof setTimeout> | undefined
+    private timer: ReturnType<typeof setTimeout> | undefined;
     /**
      * List of subscribers that wait for the queue to have capacity again. All
      * functions in this array will be called as soon as new capacity is
      * available, i.e. the number of pending tasks falls below `concurrency`.
      */
-    private subscribers: Array<(capacity: number) => void> = []
-    private emptySubscribers: Array<() => void> = []
+    private subscribers: Array<(capacity: number) => void> = [];
+    private emptySubscribers: Array<() => void> = [];
 
     /**
      * Creates a new decaying queue with the given parameters.
@@ -114,11 +114,11 @@ export class DecayingDeque<Y, R = unknown> {
         private readonly worker: (t: Y) => Promise<void>,
         concurrency: boolean | number,
         private readonly catchError: (err: R, elem: Y) => void | Promise<void>,
-        private readonly catchTimeout: (t: Y, task: Promise<void>) => void
+        private readonly catchTimeout: (t: Y, task: Promise<void>) => void,
     ) {
-        if (concurrency === false) this.concurrency = 1
-        else if (concurrency === true) this.concurrency = Infinity
-        else this.concurrency = concurrency < 1 ? 1 : concurrency
+        if (concurrency === false) this.concurrency = 1;
+        else if (concurrency === true) this.concurrency = Infinity;
+        else this.concurrency = concurrency < 1 ? 1 : concurrency;
     }
 
     /**
@@ -129,40 +129,40 @@ export class DecayingDeque<Y, R = unknown> {
      * @returns `this.capacity()`
      */
     add(elems: Y[]): Promise<number> {
-        const len = elems.length
-        this.len += len
+        const len = elems.length;
+        this.len += len;
 
         if (len > 0) {
-            let i = 0
-            const now = Date.now()
+            let i = 0;
+            const now = Date.now();
 
             // emptyness check
             if (this.head === null) {
-                this.head = this.tail = this.toDrift(elems[i++]!, now)
+                this.head = this.tail = this.toDrift(elems[i++]!, now);
                 // start timer because head element changed
-                this.startTimer()
+                this.startTimer();
             }
 
-            let prev = this.tail!
+            let prev = this.tail!;
             while (i < len) {
                 // create drift from source element
-                const node = this.toDrift(elems[i++]!, now)
+                const node = this.toDrift(elems[i++]!, now);
                 // link it to previous element (append operation)
-                prev.next = node
-                node.prev = prev
-                prev = node
+                prev.next = node;
+                node.prev = prev;
+                prev = node;
             }
-            this.tail = prev
+            this.tail = prev;
         }
 
-        return this.capacity()
+        return this.capacity();
     }
 
     empty(): Promise<void> {
-        return new Promise(resolve => {
-            if (this.len === 0) resolve()
-            else this.emptySubscribers.push(resolve)
-        })
+        return new Promise((resolve) => {
+            if (this.len === 0) resolve();
+            else this.emptySubscribers.push(resolve);
+        });
     }
 
     /**
@@ -173,11 +173,11 @@ export class DecayingDeque<Y, R = unknown> {
      * @returns `concurrency - length` once positive
      */
     capacity(): Promise<number> {
-        return new Promise(resolve => {
-            const capacity = this.concurrency - this.len
-            if (capacity > 0) resolve(capacity)
-            else this.subscribers.push(resolve)
-        })
+        return new Promise((resolve) => {
+            const capacity = this.concurrency - this.len;
+            if (capacity > 0) resolve(capacity);
+            else this.subscribers.push(resolve);
+        });
     }
 
     /**
@@ -192,13 +192,15 @@ export class DecayingDeque<Y, R = unknown> {
         // skip this step, too.
         if (this.head === node && node.date !== node.next?.date) {
             // Clear previous timeout
-            if (this.timer !== undefined) clearTimeout(this.timer)
+            if (this.timer !== undefined) clearTimeout(this.timer);
             // Emptyness check (do not start if queue is now empty)
-            if (node.next === null) this.timer = undefined
+            if (node.next === null) this.timer = undefined;
             // Reschedule timer for the next node's timeout
-            else this.startTimer(node.next.date + this.taskTimeout - Date.now())
+            else {
+                this.startTimer(node.next.date + this.taskTimeout - Date.now());
+            }
         }
-        this.remove(node)
+        this.remove(node);
     }
 
     /**
@@ -209,24 +211,24 @@ export class DecayingDeque<Y, R = unknown> {
      */
     private remove(node: Drift<Y>): void {
         // Connecting the links of `prev` and `next` removes `node`
-        if (this.head === node) this.head = node.next
-        else node.prev!.next = node.next
-        if (this.tail === node) this.tail = node.prev
-        else node.next!.prev = node.prev
+        if (this.head === node) this.head = node.next;
+        else node.prev!.next = node.next;
+        if (this.tail === node) this.tail = node.prev;
+        else node.next!.prev = node.prev;
 
         // Mark this drift as no longer contained
-        node.date = -1
+        node.date = -1;
 
         // Notify subscribers if there is capacity by now
-        const capacity = this.concurrency - --this.len
+        const capacity = this.concurrency - --this.len;
         if (capacity > 0) {
-            this.subscribers.forEach(resolve => resolve(capacity))
-            this.subscribers = []
+            this.subscribers.forEach((resolve) => resolve(capacity));
+            this.subscribers = [];
         }
         // Notify subscribers if the queue is empty now
         if (this.len === 0) {
-            this.emptySubscribers.forEach(resolve => resolve())
-            this.emptySubscribers = []
+            this.emptySubscribers.forEach((resolve) => resolve());
+            this.emptySubscribers = [];
         }
     }
 
@@ -244,21 +246,21 @@ export class DecayingDeque<Y, R = unknown> {
         const node: Drift<Y> = {
             prev: null,
             task: this.worker(elem)
-                .catch(async err => {
+                .catch(async (err) => {
                     // Rethrow iff the drift is no longer contained (timed out)
-                    if (node.date > 0) await this.catchError(err, elem)
-                    else throw err
+                    if (node.date > 0) await this.catchError(err, elem);
+                    else throw err;
                 })
                 .finally(() => {
                     // Decay the node once the task completes (unless the drift was
                     // removed due to a timeout before)
-                    if (node.date > 0) this.decay(node)
+                    if (node.date > 0) this.decay(node);
                 }),
             next: null,
             date,
             elem,
-        }
-        return node
+        };
+        return node;
     }
 
     /**
@@ -267,10 +269,9 @@ export class DecayingDeque<Y, R = unknown> {
      * @param ms Number of milliseconds to wait before the timeout kicks in
      */
     private startTimer(ms = this.taskTimeout): void {
-        this.timer =
-            ms > MAX_TIMEOUT_VALUE
-                ? undefined
-                : setTimeout(() => this.timeout(), ms)
+        this.timer = ms > MAX_TIMEOUT_VALUE
+            ? undefined
+            : setTimeout(() => this.timeout(), ms);
     }
 
     /**
@@ -282,14 +283,14 @@ export class DecayingDeque<Y, R = unknown> {
     private timeout(): void {
         // Rare cases of the event ordering might fire a timeout even though the
         // head element has just decayed.
-        if (this.head === null) return
+        if (this.head === null) return;
         while (this.head.date === this.head.next?.date) {
-            this.catchTimeout(this.head.elem, this.head.task)
+            this.catchTimeout(this.head.elem, this.head.task);
             // No need to restart timer here, we'll modify head again anyway
-            this.remove(this.head)
+            this.remove(this.head);
         }
-        this.catchTimeout(this.head.elem, this.head.task)
-        this.decay(this.head)
+        this.catchTimeout(this.head.elem, this.head.task);
+        this.decay(this.head);
     }
 
     /**
@@ -297,7 +298,7 @@ export class DecayingDeque<Y, R = unknown> {
      * `this.pendingTasks().length` (but much more efficient).
      */
     get length() {
-        return this.len
+        return this.len;
     }
 
     /**
@@ -305,13 +306,13 @@ export class DecayingDeque<Y, R = unknown> {
      * are currently being processed.
      */
     pendingTasks(): Y[] {
-        const len = this.len
-        const snapshot: Y[] = Array(len)
-        let drift = this.head!
+        const len = this.len;
+        const snapshot: Y[] = Array(len);
+        let drift = this.head!;
         for (let i = 0; i < len; i++) {
-            snapshot[i] = drift.elem
-            drift = drift.next!
+            snapshot[i] = drift.elem;
+            drift = drift.next!;
         }
-        return snapshot
+        return snapshot;
     }
 }

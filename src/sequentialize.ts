@@ -1,6 +1,6 @@
 interface Clot {
-    chain: Promise<unknown>
-    len: number
+    chain: Promise<unknown>;
+    len: number;
 }
 
 /**
@@ -47,43 +47,43 @@ interface Clot {
  * @returns Sequentializing middleware to be installed on the bot
  */
 export function sequentialize<C>(
-    constraint: (ctx: C) => string | string[] | undefined
+    constraint: (ctx: C) => string | string[] | undefined,
 ) {
-    const map = new Map<string, Clot>()
+    const map = new Map<string, Clot>();
     return async (ctx: C, next: () => void | Promise<void>) => {
-        const con = constraint(ctx)
+        const con = constraint(ctx);
         const cs = (Array.isArray(con) ? con : [con]).filter(
-            (cs): cs is string => !!cs
-        )
-        const prev = cs.map(c => {
-            let v = map.get(c)
+            (cs): cs is string => !!cs,
+        );
+        const prev = cs.map((c) => {
+            let v = map.get(c);
             if (v === undefined) {
-                v = { chain: Promise.resolve(), len: 0 }
-                map.set(c, v)
+                v = { chain: Promise.resolve(), len: 0 };
+                map.set(c, v);
             }
-            return v
-        })
+            return v;
+        });
         const clot = Promise.all(
             prev.map(
-                p => new Promise<void>(resolve => p.chain.finally(resolve))
-            )
-        )
+                (p) => new Promise<void>((resolve) => p.chain.finally(resolve)),
+            ),
+        );
         async function run() {
-            await clot // cannot reject
+            await clot; // cannot reject
             try {
-                await next()
+                await next();
             } finally {
-                cs.forEach(c => {
-                    const cl = map.get(c)
-                    if (cl !== undefined && --cl.len === 0) map.delete(c)
-                })
+                cs.forEach((c) => {
+                    const cl = map.get(c);
+                    if (cl !== undefined && --cl.len === 0) map.delete(c);
+                });
             }
         }
-        const task: Promise<void> = run()
-        prev.forEach(pr => {
-            pr.len++
-            pr.chain = task
-        })
-        await task // rethrows error
-    }
+        const task: Promise<void> = run();
+        prev.forEach((pr) => {
+            pr.len++;
+            pr.chain = task;
+        });
+        await task; // rethrows error
+    };
 }
