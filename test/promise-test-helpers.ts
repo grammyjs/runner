@@ -1,38 +1,35 @@
 import {
-    assert as assert_,
-    assertEquals as assertEquals_,
-    assertThrows as assertThrows_,
+    assert as assert,
+    assertEquals as assertEquals,
+    assertThrows as assertThrows,
 } from "https://deno.land/std@0.87.0/testing/asserts.ts";
+import { deferred } from "https://deno.land/std@0.87.0/async/deferred.ts";
 
 export interface T {
     pass: () => void;
     fail: () => void;
     sleep: (ms: number) => Promise<void>;
-    assert: typeof assert_;
-    assertThrows: typeof assertThrows_;
-    assertEquals: typeof assertEquals_;
+    assert: typeof assert;
+    assertThrows: typeof assertThrows;
+    assertEquals: typeof assertEquals;
 }
 
 export function test(fn: (t: T) => void | Promise<void>): () => Promise<void> {
-    return () =>
-        new Promise(async (resolve, reject) => {
-            function noThrow<X extends (...args: any[]) => any>(fn: X) {
-                return (...args: any[]) => {
-                    try {
-                        return fn(...args);
-                    } catch (error) {
-                        reject(error);
-                    }
-                };
-            }
-            const t: T = {
-                pass: resolve,
-                fail: reject,
-                sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
-                assertThrows: noThrow(assertThrows_),
-                assert: noThrow(assert_),
-                assertEquals: noThrow(assertEquals_),
-            };
+    return async () => {
+        const def = deferred();
+        const t: T = {
+            pass: () => def.resolve(),
+            fail: () => def.reject(),
+            sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
+            assertThrows: assertThrows,
+            assert: assert,
+            assertEquals: assertEquals,
+        };
+        try {
             await fn(t);
-        });
+        } catch (error) {
+            def.reject(error);
+        }
+        await def;
+    };
 }
