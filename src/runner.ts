@@ -304,8 +304,16 @@ function printError(error: unknown) {
 function isUnrecoverableError(error: any): (true | undefined) {
 
   const unrecoverableErrorCodes = [
+
+    // incorrect bot token
+    401,
+
+    // bot API server is closing
+    429,
+
     // 409 (conflict) is known to be thrown
-    // when bot has a registered webhook
+    // when bot has a registered webhook or another
+    // instance polling for updates
     409,
     // @todo: check if other error codes need to be added here
   ];
