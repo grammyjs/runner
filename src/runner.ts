@@ -210,9 +210,7 @@ export function createUpdateFetcher<Y extends { update_id: number }, R>(
                 }
 
                 // preventing retries on unrecoverable errors
-                if (isUnrecoverableError(error)) {
-                  throw error;
-                }
+                await throwIfUnrecoverable(error);
 
                 if (Date.now() + retryIn < latestRetry) {
                     await new Promise((r) => setTimeout(r, retryIn));
@@ -286,6 +284,19 @@ export function createRunner<Y>(
     };
 }
 
+async function throwIfUnrecoverable(err: any) {
+    if (typeof err !== "object" || err === null) return;
+    const code = err.error_code;
+    if (code === 401 || code === 409) throw err; // unauthorized or conflict
+    if (code === 429) {
+        // server is closing, must wait some seconds
+        const delay = err.parameters?.retry_after;
+        if (typeof delay === "number") {
+            await new Promise((r) => setTimeout(r, 1000 * delay));
+        }
+    }
+}
+
 function printError(error: unknown) {
     console.error("::: ERROR ERROR ERROR :::");
     console.error();
@@ -299,32 +310,4 @@ function printError(error: unknown) {
     console.error();
     console.error("Here is your error object:");
     console.error(error);
-}
-
-function isUnrecoverableError(error: any): (true | undefined) {
-
-  const unrecoverableErrorCodes = [
-
-    // incorrect bot token
-    401,
-
-    // bot API server is closing
-    429,
-
-    // 409 (conflict) is known to be thrown
-    // when bot has a registered webhook or another
-    // instance polling for updates
-    409,
-    // @todo: check if other error codes need to be added here
-  ];
-
-  if ('error_code' in error) {
-    // noinspection TypeScriptUnresolvedVariable
-    if (unrecoverableErrorCodes.includes(error.error_code)) {
-      return true;
-    }
-  }
-
-  return undefined;
-
 }
