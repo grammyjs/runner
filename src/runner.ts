@@ -152,7 +152,7 @@ export function run<Y extends { update_id: number }, R>(
  * Takes a grammY bot and returns an update fetcher function for it. The
  * returned function has built-in retrying behavior that can be configured.
  * After every successful fetching operation, the `offset` parameter is
- * correctly incremented. As a reult, you can simply invoke the created function
+ * correctly incremented. As a result, you can simply invoke the created function
  * multiple times in a row, and you will obtain new updates every time.
  *
  * The update fetcher function has a default long polling timeout of 30 seconds.
@@ -208,6 +208,10 @@ export function createUpdateFetcher<Y extends { update_id: number }, R>(
                     );
                     console.error("[grammY runner]", error);
                 }
+
+                // preventing retries on unrecoverable errors
+                await throwIfUnrecoverable(error);
+
                 if (Date.now() + retryIn < latestRetry) {
                     await new Promise((r) => setTimeout(r, retryIn));
                     retryIn = backoff(retryIn);
@@ -278,6 +282,19 @@ export function createRunner<Y>(
         task: () => task,
         isRunning: () => running && source.isActive(),
     };
+}
+
+async function throwIfUnrecoverable(err: any) {
+    if (typeof err !== "object" || err === null) return;
+    const code = err.error_code;
+    if (code === 401 || code === 409) throw err; // unauthorized or conflict
+    if (code === 429) {
+        // server is closing, must wait some seconds
+        const delay = err.parameters?.retry_after;
+        if (typeof delay === "number") {
+            await new Promise((r) => setTimeout(r, 1000 * delay));
+        }
+    }
 }
 
 function printError(error: unknown) {
