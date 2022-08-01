@@ -86,7 +86,7 @@ interface BotAdapter<Y, R> {
  * thousand per hour), or if your bot has long-running operations such as large
  * file transfers.
  *
- * Confer the grammY [documentation](https://grammy.dev/advanced/runner.html) to
+ * Confer the grammY [documentation](https://grammy.dev/plugins/runner.html) to
  * learn more about how to scale a bot with grammY.
  *
  * @param bot A grammY bot
