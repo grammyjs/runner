@@ -22,7 +22,7 @@
         "abort-controller": "^3.0.0"
     },
     "devDependencies": {
-        "deno2node": "0.4.0"
+        "deno2node": "1.4.0"
     },
     "files": [
         "out/"
