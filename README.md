@@ -95,7 +95,7 @@ type MyContext = Context & SessionFlavor<SessionData>;
 const bot = new Bot<MyContext>("<token>");
 
 /** Resolves the session key for a context object */
-function getSessionKey(ctx: MyContext) {
+function getSessionKey(ctx: Context) {
     return ctx.chat?.id.toString();
 }
 /** Creates an initial session data object */
