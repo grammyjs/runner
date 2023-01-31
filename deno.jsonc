@@ -1,5 +1,11 @@
 {
     "lock": false,
+    "tasks": {
+        "backport": "deno run --no-prompt --allow-read=. --allow-write=. https://deno.land/x/deno2node@v1.7.1/src/cli.ts tsconfig.json",
+        "check": "deno cache --check=all src/mod.ts",
+        "dev": "deno fmt && deno lint && deno task test && deno task check",
+        "test": "deno test ./test/"
+    },
     "fmt": {
         "options": {
             "indentWidth": 4,
