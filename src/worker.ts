@@ -5,6 +5,7 @@ import {
     type Context,
     type Update,
 } from "./deps.deno.ts";
+import { parentThread } from "./platform.deno.ts";
 
 export class BotWorker<
     C extends Context = Context,
@@ -15,11 +16,12 @@ export class BotWorker<
         config?: BotConfig<C>,
     ) {
         super(token, config);
-        self.onmessage = async ({ data: update }: MessageEvent<Update>) => {
+        const p = parentThread<number, Update>();
+        p.onMessage(async (update: Update) => {
             if (!this.isInited()) await this.init();
             await this.handleUpdate(update);
             self.postMessage(update.update_id);
-        };
+        });
         this.start = () => {
             throw new Error("Cannot start a bot worker!");
         };
