@@ -99,6 +99,7 @@ interface BotAdapter<Y, R> {
 export function run<Y extends { update_id: number }, R>(
     bot: BotAdapter<Y, R>,
     concurrency = 500,
+    // deno-lint-ignore no-explicit-any
     sourceOptions: any = {},
     runnerOptions: RunnerOptions = {},
     sinkOptions: SinkOptions<Y> = {
@@ -170,6 +171,7 @@ export function createUpdateFetcher<Y extends { update_id: number }, R>(
     bot: BotAdapter<Y, R>,
     maxRetryTime: number,
     retryInterval: "exponential" | "quadratic" | number,
+    // deno-lint-ignore no-explicit-any
     sourceOptions: any,
     silent = false,
 ) {
