@@ -6,7 +6,7 @@ const bot = new Bot("");
 
 // Add the usual middleware, yada yada
 bot.command("start", (ctx) => ctx.reply("Got your message."));
-bot.use(distribute("./sub.ts"));
+bot.use(distribute(new URL("./sub.ts", import.meta.url)));
 
 // Run it concurrently!
 run(bot);
