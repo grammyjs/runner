@@ -1,3 +1,6 @@
+/// <reference no-default-lib="true" />
+/// <reference lib="deno.worker" />
+
 export type ModuleSpecifier = string | URL;
 
 export interface Thread<I, O> {

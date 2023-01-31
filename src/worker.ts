@@ -1,6 +1,3 @@
-/// <reference no-default-lib="true" />
-/// <reference lib="deno.worker" />
-
 import {
     type Api,
     Bot,
