@@ -21,6 +21,9 @@
     "dependencies": {
         "abort-controller": "^3.0.0"
     },
+    "peerDependencies": {
+        "grammy": "^1.0.0"
+    },
     "devDependencies": {
         "deno2node": "1.4.0"
     },
