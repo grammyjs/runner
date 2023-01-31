@@ -1,18 +1,18 @@
 import { parentPort, Worker } from "worker_threads";
 
 export interface Thread<I, O> {
-    onMessage: (callback: (i: I) => void | Promise<void>) => void;
-    postMessage: (o: O) => void | Promise<void>;
+    onMessage: (callback: (o: O) => void | Promise<void>) => void;
+    postMessage: (i: I) => void | Promise<void>;
 }
 
-export function createThread<I, O>(specifier: string | URL): Thread<O, I> {
+export function createThread<I, O>(specifier: string | URL): Thread<I, O> {
     const worker = new Worker(specifier);
     return {
         onMessage(callback) {
             worker.on("message", callback);
         },
-        postMessage(o) {
-            worker.postMessage(o);
+        postMessage(i) {
+            worker.postMessage(i);
         },
     };
 }
@@ -20,10 +20,10 @@ export function createThread<I, O>(specifier: string | URL): Thread<O, I> {
 export function parentThread<I, O>(): Thread<I, O> {
     return {
         onMessage(callback) {
-            parentPort.on("message", callback);
+            parentPort?.on("message", callback);
         },
         postMessage(o) {
-            parentPort.postMessage(o);
+            parentPort?.postMessage(o);
         },
     };
 }

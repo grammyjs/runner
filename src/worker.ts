@@ -1,3 +1,6 @@
+/// <reference no-default-lib="true" />
+/// <reference lib="deno.worker" />
+
 import {
     type Api,
     Bot,
@@ -20,7 +23,7 @@ export class BotWorker<
         p.onMessage(async (update: Update) => {
             if (!this.isInited()) await this.init();
             await this.handleUpdate(update);
-            self.postMessage(update.update_id);
+            p.postMessage(update.update_id);
         });
         this.start = () => {
             throw new Error("Cannot start a bot worker!");

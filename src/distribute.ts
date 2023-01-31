@@ -2,7 +2,7 @@ import { type Update } from "./deps.deno.ts";
 import { createThread, type Thread } from "./platform.deno.ts";
 
 class UpdateThread {
-    public readonly threads: Thread<number, Update>[] = [];
+    public readonly threads: Thread<Update, number>[] = [];
     public readonly tasks = new Map<number, () => void>();
 
     constructor(specifier: string | URL, private readonly count = 4) {
