@@ -72,7 +72,7 @@ export class DecayingDeque<Y, R = unknown> {
      * Number of drifts in the queue. Equivalent to the number of currently
      * pending tasks.
      */
-    private len: number = 0;
+    private len = 0;
     /** Head element (oldest), `null` iff the queue is empty */
     private head: Drift<Y> | null = null;
     /** Tail element (newest), `null` iff the queue is empty */
