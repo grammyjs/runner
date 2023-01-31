@@ -284,14 +284,20 @@ export function createRunner<Y>(
     };
 }
 
-async function throwIfUnrecoverable(err: any) {
+async function throwIfUnrecoverable(err: unknown) {
     if (typeof err !== "object" || err === null) return;
-    const code = err.error_code;
+    const code = "error_code" in err ? err.error_code : undefined;
     if (code === 401 || code === 409) throw err; // unauthorized or conflict
     if (code === 429) {
         // server is closing, must wait some seconds
-        const delay = err.parameters?.retry_after;
-        if (typeof delay === "number") {
+        if (
+            "parameters" in err &&
+            typeof err.parameters === "object" &&
+            err.parameters !== null &&
+            "retry_after" in err.parameters &&
+            typeof err.parameters.retry_after === "number"
+        ) {
+            const delay = err.parameters.retry_after;
             await new Promise((r) => setTimeout(r, 1000 * delay));
         }
     }
