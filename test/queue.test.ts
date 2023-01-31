@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-explicit-any
 import { DecayingDeque } from "../src/queue.ts";
 import { T, test } from "./promise-test-helpers.ts";
 
@@ -7,8 +8,9 @@ Deno.test(
         let res = "";
         const q = new DecayingDeque(
             Infinity,
-            async (v) => {
+            (v) => {
                 res += v;
+                return Promise.resolve();
             },
             false,
             () => t.fail(),
@@ -26,8 +28,9 @@ Deno.test(
         let res = "";
         const q = new DecayingDeque(
             1000,
-            async (v) => {
+            (v) => {
                 res += v;
+                return Promise.resolve();
             },
             false,
             () => t.fail(),
@@ -45,8 +48,9 @@ Deno.test(
         let res = "";
         const q = new DecayingDeque(
             1000,
-            async (v) => {
+            (v) => {
                 res += v;
+                return Promise.resolve();
             },
             false,
             () => t.fail(),
@@ -64,8 +68,9 @@ Deno.test(
         let res = "";
         const q = new DecayingDeque(
             1000,
-            async (v) => {
+            (v) => {
                 res += v;
+                return Promise.resolve();
             },
             false,
             () => t.fail(),
@@ -106,8 +111,9 @@ Deno.test(
         let res = "";
         const q = new DecayingDeque(
             1000,
-            async (v) => {
+            (v) => {
                 res += v;
+                return Promise.resolve();
             },
             false,
             () => t.fail(),
@@ -124,7 +130,7 @@ Deno.test(
 
 Deno.test(
     "should catch errors",
-    test(async (t) => {
+    test((t) => {
         const q = new DecayingDeque(
             1000,
             (v) => Promise.reject(v),
@@ -142,7 +148,7 @@ Deno.test(
 
 Deno.test(
     "should catch multiple errors",
-    test(async (t) => {
+    test((t) => {
         let res = "";
         const q = new DecayingDeque(
             1000,
@@ -166,7 +172,7 @@ Deno.test(
 
 Deno.test(
     "should catch timeouts",
-    test(async (t) => {
+    test((t) => {
         const promise = new Promise<void>(() => {});
         const q = new DecayingDeque(
             10,
@@ -184,7 +190,7 @@ Deno.test(
 
 Deno.test(
     "should catch multiple timeouts",
-    test(async (t) => {
+    test((t) => {
         const promise = new Promise<void>(() => {});
         let res = "";
         const q = new DecayingDeque(
@@ -220,7 +226,7 @@ async function patternTest(t: T, pattern: string, expected = pattern) {
                 });
             } else if (c.match(/[0-9]/)) {
                 // error
-                return new Promise((resolve, reject) => {
+                return new Promise((_resolve, reject) => {
                     setTimeout(() => {
                         reject(c);
                     });
@@ -375,7 +381,7 @@ Deno.test(
         let r: any;
         const q = new DecayingDeque(
             10,
-            () => new Promise((resolve, reject) => (r = reject)),
+            () => new Promise((_resolve, reject) => (r = reject)),
             false,
             () => t.fail(),
             (i, p) => {
