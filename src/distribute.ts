@@ -1,11 +1,15 @@
 import { type Update } from "./deps.deno.ts";
-import { createThread, type Thread } from "./platform.deno.ts";
+import {
+    createThread,
+    type ModuleSpecifier,
+    type Thread,
+} from "./platform.deno.ts";
 
 class UpdateThread {
     public readonly threads: Thread<Update, number>[] = [];
     public readonly tasks = new Map<number, () => void>();
 
-    constructor(specifier: string | URL, private readonly count = 4) {
+    constructor(specifier: ModuleSpecifier, private readonly count = 4) {
         for (let i = 0; i < count; i++) {
             const worker = createThread<Update, number>(specifier);
             worker.onMessage((update_id) => {
@@ -26,8 +30,8 @@ class UpdateThread {
     }
 }
 
-const workers = new Map<string | URL, UpdateThread>();
-function getWorker(specifier: string | URL, count?: number) {
+const workers = new Map<ModuleSpecifier, UpdateThread>();
+function getWorker(specifier: ModuleSpecifier, count?: number) {
     let worker = workers.get(specifier);
     if (worker === undefined) {
         worker = new UpdateThread(specifier, count);
@@ -37,7 +41,7 @@ function getWorker(specifier: string | URL, count?: number) {
 }
 
 export function distribute<C extends { update: { update_id: number } }>(
-    specifier: string | URL,
+    specifier: ModuleSpecifier,
     options?: { count?: number },
 ) {
     const worker = getWorker(specifier, options?.count);

@@ -1,9 +1,11 @@
+export type ModuleSpecifier = string | URL;
+
 export interface Thread<I, O> {
     onMessage: (callback: (o: O) => void | Promise<void>) => void;
     postMessage: (i: I) => void | Promise<void>;
 }
 
-export function createThread<I, O>(specifier: string | URL): Thread<I, O> {
+export function createThread<I, O>(specifier: ModuleSpecifier): Thread<I, O> {
     const url = new URL(specifier, import.meta.url);
     const worker = new Worker(url.href, { type: "module" });
     return {
