@@ -1,5 +1,5 @@
 import { Bot } from "grammy";
-import { distribute, run } from "../..";
+import { distribute, run } from "../../out/mod";
 
 // Create bot
 const bot = new Bot("");

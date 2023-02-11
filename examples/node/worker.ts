@@ -1,4 +1,4 @@
-import { BotWorker } from "../..";
+import { BotWorker } from "../../out/mod";
 
 const bot = new BotWorker("");
 
