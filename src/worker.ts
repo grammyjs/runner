@@ -4,6 +4,7 @@ import {
     type BotConfig,
     type Context,
     type Update,
+    type UserFromGetMe,
 } from "./deps.deno.ts";
 import { parentThread } from "./platform.deno.ts";
 
@@ -16,9 +17,13 @@ export class BotWorker<
         config?: BotConfig<C>,
     ) {
         super(token, config);
-        const p = parentThread<number, Update>();
+        const p = parentThread<number, Update, UserFromGetMe>();
+        p.seed.then((me) => {
+            if (!this.isInited()) {
+                this.botInfo = me;
+            }
+        });
         p.onMessage(async (update: Update) => {
-            if (!this.isInited()) await this.init();
             await this.handleUpdate(update);
             p.postMessage(update.update_id);
         });

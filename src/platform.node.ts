@@ -1,4 +1,4 @@
-import { parentPort, Worker } from "worker_threads";
+import { parentPort, Worker, workerData } from "node:worker_threads";
 
 export type ModuleSpecifier = string;
 
@@ -7,8 +7,15 @@ export interface Thread<I, O> {
     postMessage: (i: I) => void | Promise<void>;
 }
 
-export function createThread<I, O>(specifier: ModuleSpecifier): Thread<I, O> {
-    const worker = new Worker(specifier);
+interface Seed<S> {
+    seed: Promise<S>;
+}
+
+export function createThread<I, O, S>(
+    specifier: ModuleSpecifier,
+    seed: S,
+): Thread<I, O> {
+    const worker = new Worker(specifier, { workerData: seed });
     return {
         onMessage(callback) {
             worker.on("message", callback);
@@ -19,8 +26,9 @@ export function createThread<I, O>(specifier: ModuleSpecifier): Thread<I, O> {
     };
 }
 
-export function parentThread<I, O>(): Thread<I, O> {
+export function parentThread<I, O, S>(): Thread<I, O> & Seed<S> {
     return {
+        seed: workerData,
         onMessage(callback) {
             parentPort?.on("message", callback);
         },

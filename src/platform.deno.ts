@@ -8,9 +8,17 @@ export interface Thread<I, O> {
     postMessage: (i: I) => void | Promise<void>;
 }
 
-export function createThread<I, O>(specifier: ModuleSpecifier): Thread<I, O> {
+export interface Seed<S> {
+    seed: Promise<S>;
+}
+
+export function createThread<I, O, S>(
+    specifier: ModuleSpecifier,
+    seed: S,
+): Thread<I, O> {
     const url = new URL(specifier, import.meta.url);
     const worker = new Worker(url.href, { type: "module" });
+    worker.postMessage(seed);
     return {
         onMessage(callback) {
             worker.onmessage = ({ data: o }: MessageEvent<O>) => callback(o);
@@ -21,10 +29,15 @@ export function createThread<I, O>(specifier: ModuleSpecifier): Thread<I, O> {
     };
 }
 
-export function parentThread<O, I>(): Thread<O, I> {
+export function parentThread<O, I, S>(): Thread<O, I> & Seed<S> {
+    let resolve: undefined | ((seed: S) => void) = undefined;
     return {
+        seed: new Promise<S>((r) => resolve = r),
         onMessage(callback) {
-            self.onmessage = ({ data: i }: MessageEvent<I>) => callback(i);
+            self.onmessage = ({ data }: MessageEvent<S>) => {
+                resolve?.(data);
+                self.onmessage = ({ data: i }: MessageEvent<I>) => callback(i);
+            };
         },
         postMessage(o) {
             self.postMessage(o);

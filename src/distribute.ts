@@ -1,4 +1,4 @@
-import { type Update } from "./deps.deno.ts";
+import { type Update, type UserFromGetMe } from "./deps.deno.ts";
 import {
     createThread,
     type ModuleSpecifier,
@@ -9,9 +9,16 @@ class UpdateThread {
     public readonly threads: Thread<Update, number>[] = [];
     public readonly tasks = new Map<number, () => void>();
 
-    constructor(specifier: ModuleSpecifier, private readonly count = 4) {
+    constructor(
+        specifier: ModuleSpecifier,
+        me: UserFromGetMe,
+        private readonly count = 4,
+    ) {
         for (let i = 0; i < count; i++) {
-            const worker = createThread<Update, number>(specifier);
+            const worker = createThread<Update, number, UserFromGetMe>(
+                specifier,
+                me,
+            );
             worker.onMessage((update_id) => {
                 const task = this.tasks.get(update_id);
                 task?.();
@@ -31,19 +38,25 @@ class UpdateThread {
 }
 
 const workers = new Map<ModuleSpecifier, UpdateThread>();
-function getWorker(specifier: ModuleSpecifier, count?: number) {
+function getWorker(
+    specifier: ModuleSpecifier,
+    me: UserFromGetMe,
+    count?: number,
+) {
     let worker = workers.get(specifier);
     if (worker === undefined) {
-        worker = new UpdateThread(specifier, count);
+        worker = new UpdateThread(specifier, me, count);
         workers.set(specifier, worker);
     }
     return worker;
 }
 
-export function distribute<C extends { update: { update_id: number } }>(
+export function distribute<
+    C extends { update: { update_id: number }; me: UserFromGetMe },
+>(
     specifier: ModuleSpecifier,
     options?: { count?: number },
 ) {
-    const worker = getWorker(specifier, options?.count);
-    return (ctx: C) => worker.process(ctx.update);
+    const count = options?.count;
+    return (ctx: C) => getWorker(specifier, ctx.me, count).process(ctx.update);
 }
