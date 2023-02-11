@@ -6,6 +6,23 @@ import { createSource, UpdateSource } from "./source.ts";
  */
 export interface RunnerOptions {
     /**
+     * By default, the runner tries to pull in updates as fast as possible. This
+     * means that the bot keeps the response times as short as possible. In
+     * other words, the runner optimizes for high speed.
+     *
+     * However, a consequence of this is that the runner fetches many small
+     * update batches from Telegram. This can increase the network traffic
+     * substantially.
+     *
+     * You can use this option to decide on a scale from `0.0` to `1.0` (both
+     * inclusive) if the runner should optimize for high speed or for low
+     * network traffic. Specify `0.0` to fetch updates as fast as possible.
+     * Specify `1.0` to fetch updates as efficiently as possible.
+     *
+     * Defaults to `0.0`.
+     */
+    speedTrafficBalance?: number;
+    /**
      * When a call to `getUpdates` fails, this option specifies the number of
      * milliseconds that the runner should keep on retrying the calls.
      */
@@ -108,6 +125,7 @@ export function run<Y extends { update_id: number }, R>(
 ): RunnerHandle {
     runnerOptions.maxRetryTime ??= 15 * 60 * 60 * 1000; // 15 hours in milliseconds
     runnerOptions.retryInterval ??= "exponential";
+    runnerOptions.speedTrafficBalance ??= 0; // speed
 
     // create update fetch function
     const fetchUpdates = createUpdateFetcher(
@@ -126,7 +144,7 @@ export function run<Y extends { update_id: number }, R>(
             this.supply = fetchUpdates;
             return updates;
         },
-    });
+    }, runnerOptions.speedTrafficBalance);
 
     // create sink
     const sink = createConcurrentSink<Y, R>(
