@@ -1,4 +1,4 @@
-import { parentPort, Worker, workerData } from "node:worker_threads";
+import { parentPort, Worker, workerData } from "worker_threads";
 
 export type ModuleSpecifier = string;
 
