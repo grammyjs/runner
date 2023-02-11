@@ -6,7 +6,7 @@ const bot = new Bot("");
 
 // Add the usual middleware, yada yada
 bot.command("start", (ctx) => ctx.reply("Got your message."));
-bot.use(distribute("./sub.ts"));
+bot.use(distribute(__dirname + "/worker"));
 
 // Run it concurrently!
 run(bot);
