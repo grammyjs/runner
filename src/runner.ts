@@ -284,6 +284,7 @@ export function createRunner<Y>(
     };
 }
 
+// deno-lint-ignore no-explicit-any
 async function throwIfUnrecoverable(err: any) {
     if (typeof err !== "object" || err === null) return;
     const code = err.error_code;

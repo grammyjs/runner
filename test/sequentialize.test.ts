@@ -55,7 +55,7 @@ Deno.test(
     test(async (t: T) => {
         const s = seq();
 
-        let pxs: boolean[] = [];
+        const pxs: boolean[] = [];
         function makeResolve(...cs: string[]) {
             const index = pxs.length;
             pxs.push(false);
@@ -65,7 +65,7 @@ Deno.test(
             });
         }
 
-        let errs: Error[] = [];
+        const errs: Error[] = [];
         function makeReject(...cs: string[]) {
             return s(cs, async () => {
                 await t.sleep(10);
