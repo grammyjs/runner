@@ -11,6 +11,10 @@ import {
     type UpdateSupplier,
 } from "./source.ts";
 
+/**
+ * Options to be passed to `run(bot, options)`. Collects the options for the
+ * underlying update source, runner, and update sink.
+ */
 export interface RunOptions<Y> {
     /**
      * Options that influence the behavior of the update source.
