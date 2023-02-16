@@ -1,5 +1,10 @@
 {
     "lock": false,
+    "tasks": {
+        "check": "deno cache --check=all src/mod.ts",
+        "test": "deno test ./test/",
+        "dev": "deno fmt && deno lint && deno task test && deno task check"
+    },
     "fmt": {
         "options": {
             "indentWidth": 4,
