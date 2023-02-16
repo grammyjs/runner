@@ -16,6 +16,7 @@
         "url": "https://github.com/grammyjs/runner/issues"
     },
     "scripts": {
+        "prepare": "npm run build",
         "build": "deno2node tsconfig.json"
     },
     "dependencies": {
