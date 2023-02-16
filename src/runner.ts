@@ -84,6 +84,12 @@ export interface RunnerHandle {
      */
     stop: () => Promise<void>;
     /**
+     * Returns the size of the underlying update sink. This number is equal to
+     * the number of updates that are currently being processed. The size does
+     * not count updates that have completed, errored, or timed out.
+     */
+    size: () => number;
+    /**
      * Returns a promise that resolves as soon as the runner stops, either by
      * being stopped or by crashing. If the bot crashes, it means that the error
      * handlers installed on the bot re-threw the error, in which case the bot
@@ -295,6 +301,7 @@ export function createRunner<Y>(
             running = true;
             task = runner();
         },
+        size: () => sink.size(),
         stop: () => {
             const t = task!;
             running = false;

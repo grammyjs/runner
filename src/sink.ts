@@ -37,6 +37,12 @@ export interface UpdateSink<Y> {
      */
     handle: (updates: Y[]) => Promise<number>;
     /**
+     * Returns the size of the sink. The size is equal to the number of tasks
+     * that are currently being processed. Calling `size()` is always equal to
+     * `snapshot().length`.
+     */
+    size: () => number;
+    /**
      * Takes a snapshot of the sink. This synchronously returns all tasks that
      * are currently being processed, in the order they were added.
      *
@@ -119,6 +125,7 @@ export function createSequentialSink<Y, R = unknown>(
             for (let i = 0; i < len; i++) await q.add([updates[i]!]);
             return Infinity;
         },
+        size: () => q.length,
         snapshot: () => q.pendingTasks(),
     };
 }
@@ -160,6 +167,7 @@ export function createBatchSink<Y, R = unknown>(
     const constInf = () => Infinity;
     return {
         handle: (updates) => q.add(updates).then(constInf),
+        size: () => q.length,
         snapshot: () => q.pendingTasks(),
     };
 }
@@ -200,6 +208,7 @@ export function createConcurrentSink<Y, R = unknown>(
     );
     return {
         handle: (updates) => q.add(updates),
+        size: () => q.length,
         snapshot: () => q.pendingTasks(),
     };
 }
