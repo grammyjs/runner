@@ -60,6 +60,41 @@ export interface UpdateSource<Y> {
 }
 
 /**
+ * Options controlling how the update source operates.
+ */
+export interface SourceOptions {
+    /**
+     * By default, the runner tries to pull in updates as fast as possible. This
+     * means that the bot keeps the response times as short as possible. In
+     * other words, the runner optimizes for high speed.
+     *
+     * However, a consequence of this is that the runner fetches many small
+     * update batches from Telegram. This can increase the network traffic
+     * substantially.
+     *
+     * You can use this option to decide on a scale from `0.0` to `1.0` (both
+     * inclusive) if the runner should optimize for high speed or for low
+     * network traffic. Specify `0.0` to fetch updates as fast as possible.
+     * Specify `1.0` to fetch updates as efficiently as possible.
+     *
+     * Defaults to `0.0`.
+     */
+    speedTrafficBalance?: number;
+    /**
+     * Defines a hard limit for the duration that the runner waits between calls
+     * to `getUpdates`.
+     *
+     * Note that by default, the runner does not wait at all between these
+     * calls. This is because if the speed traffic balance is set to `0.0`
+     * (which is also the default), the next update is always fetched
+     * immediately after the previous one is received.
+     *
+     * Defaults to 500 milliseconds.
+     */
+    maxDelayMilliseconds?: number;
+}
+
+/**
  * Creates an update source based on the given update supplier.
  *
  * @param supplier An update supplier to use for requesting updates
@@ -67,33 +102,54 @@ export interface UpdateSource<Y> {
  */
 export function createSource<Y>(
     supplier: UpdateSupplier<Y>,
-    speedTrafficBalance = 0,
+    options: SourceOptions = {},
 ): UpdateSource<Y> {
+    const { speedTrafficBalance = 0.0, maxDelayMilliseconds = 500 } = options;
+
     let active = false;
     let endWait = () => {};
+    let waitHandle: ReturnType<typeof setTimeout> | undefined = undefined;
     let controller: AbortController;
     function deactivate() {
         active = false;
+        clearTimeout(waitHandle);
+        waitHandle = undefined;
         endWait();
     }
-    let w = worker();
+    let updateGenerator = worker();
     let pace = Infinity;
 
-    const wanted = 100 * Math.max(0.0, Math.min(speedTrafficBalance, 1.0)); // 0 <= wanted <= 100
-    let i = 0;
-    const ns = Array(STAT_LEN).fill(0); // counts
-    const ts = Array(STAT_LEN).fill(1); // timestamps
-    let N = 0; // sum of n's
-    let T = STAT_LEN; // sum of t's
+    const bounded = Math.max(0.0, Math.min(speedTrafficBalance, 1.0)); // [0;1]
+    const balance = 100 * bounded / Math.max(1, maxDelayMilliseconds); // number of wanted updates per call
+    // We take two cyclic buffers to store update counts and durations
+    // for the last STAT_LEN update calls.
+    const counts = Array(STAT_LEN).fill(100);
+    const durations = Array(STAT_LEN).fill(1);
+    // We also keep track of the sum of the values in each buffer
+    let totalCounts = 100 * STAT_LEN; // sum of counts
+    let totalDuration = 1 * STAT_LEN; // sum of durations
+    // Write index for both buffers
+    let index = 0;
     /** Records a pair ms/items and estimates the pause length */
-    const record = wanted === 0 ? () => 0 : (t: number, n: number) => {
-        const i0 = i;
-        i = (i + 1) % STAT_LEN;
-        N += (ns[i] = n) - ns[i0];
-        T += (ts[i] = t) - ts[i0];
-        const f = (x: number) => x; // TODO: find transform
-        return f(wanted * T / (N || 1));
-    };
+    const record = balance === 0
+        ? () => 0 // do not perform any tracking if the balance is 0.0
+        : (newCount: number, newDuration: number) => {
+            // save old
+            const oldCount = counts[index];
+            const oldDuration = durations[index];
+            // write to buffer
+            counts[index] = newCount;
+            durations[index] = newDuration;
+            // update sums
+            totalCounts += newCount - oldCount;
+            totalDuration += newDuration - oldDuration;
+            // move index
+            index = (index + 1) % STAT_LEN;
+            // estimate time to wait, and cap it smoothly at maxDelay
+            const estimate = balance * totalDuration / (totalCounts || 1);
+            const capped = maxDelayMilliseconds * Math.tanh(estimate);
+            return capped;
+        };
 
     async function* worker() {
         active = true;
@@ -105,11 +161,11 @@ export function createSource<Y>(
                 const items = await supplier.supply(pace, controller.signal);
                 const post = Date.now();
                 yield items;
-                const wait = record(post - pre, items.length);
+                const wait = record(items.length, post - pre);
                 if (wait > 0) {
                     await new Promise<void>((r) => {
                         endWait = r;
-                        setTimeout(r, wait);
+                        waitHandle = setTimeout(r, wait);
                     });
                 }
             } catch (e) {
@@ -122,12 +178,12 @@ export function createSource<Y>(
     function close() {
         deactivate();
         controller.abort();
-        w = worker();
+        updateGenerator = worker();
         pace = Infinity;
     }
 
     return {
-        generator: () => w,
+        generator: () => updateGenerator,
         setGeneratorPace: (newPace) => pace = newPace,
         isActive: () => active,
         close: () => close(),

@@ -1,27 +1,37 @@
-import { createConcurrentSink, SinkOptions, UpdateSink } from "./sink.ts";
-import { createSource, UpdateSource } from "./source.ts";
+import {
+    createConcurrentSink,
+    type SinkOptions,
+    type UpdateSink,
+} from "./sink.ts";
+import {
+    createSource,
+    type SourceOptions,
+    type UpdateSource,
+} from "./source.ts";
+
+export interface RunOptions<Y> {
+    /**
+     * Options that can be passed to `getUpdates` calls.
+     */
+    fetch?: FetchOptions;
+    /**
+     * Options that influence the behavior of the update source.
+     */
+    source?: SourceOptions;
+    /**
+     * Options that influence the behavior of the runner which connects source and sink.
+     */
+    runner?: RunnerOptions;
+    /**
+     * Options that influence the behavior of the sink that processes the updates.
+     */
+    sink?: SinkOptions<Y>;
+}
 
 /**
- * Options to be passed to `run(bot)`,
+ * Options to be passed to the runner created internally by `run(bot)`.
  */
 export interface RunnerOptions {
-    /**
-     * By default, the runner tries to pull in updates as fast as possible. This
-     * means that the bot keeps the response times as short as possible. In
-     * other words, the runner optimizes for high speed.
-     *
-     * However, a consequence of this is that the runner fetches many small
-     * update batches from Telegram. This can increase the network traffic
-     * substantially.
-     *
-     * You can use this option to decide on a scale from `0.0` to `1.0` (both
-     * inclusive) if the runner should optimize for high speed or for low
-     * network traffic. Specify `0.0` to fetch updates as fast as possible.
-     * Specify `1.0` to fetch updates as efficiently as possible.
-     *
-     * Defaults to `0.0`.
-     */
-    speedTrafficBalance?: number;
     /**
      * When a call to `getUpdates` fails, this option specifies the number of
      * milliseconds that the runner should keep on retrying the calls.
@@ -107,21 +117,24 @@ interface BotAdapter<Y, R> {
  * learn more about how to scale a bot with grammY.
  *
  * @param bot A grammY bot
- * @param concurrency Maximal number of updates to process concurrently
- * @param sourceOptions Options to pass to `getUpdates` calls
- * @param runnerOptions Options for retry behavior of `getUpdates` calls
- * @param sinkOptions Further configuration options
+ * @param options Further configuration options
  * @returns A handle to manage your running bot
  */
 export function run<Y extends { update_id: number }, R>(
     bot: BotAdapter<Y, R>,
-    concurrency = 500,
-    sourceOptions: any = {},
-    runnerOptions: RunnerOptions = {},
-    sinkOptions: SinkOptions<Y> = {
-        timeout: Infinity,
-        timeoutHandler: () => {},
-    },
+    options?: RunOptions<Y>,
+): RunnerHandle;
+export function run<Y extends { update_id: number }, R>(
+    bot: BotAdapter<Y, R>,
+    concurrency?: number,
+    sourceOptions?: SourceOptions,
+    runnerOptions?: RunnerOptions,
+    sinkOptions?: SinkOptions<Y>,
+): RunnerHandle;
+export function run<Y extends { update_id: number }, R>(
+    bot: BotAdapter<Y, R>,
+    options: number | RunOptions = {},
+    sourceOptions?: SourceOptions,
 ): RunnerHandle {
     runnerOptions.maxRetryTime ??= 15 * 60 * 60 * 1000; // 15 hours in milliseconds
     runnerOptions.retryInterval ??= "exponential";
@@ -164,6 +177,10 @@ export function run<Y extends { update_id: number }, R>(
     const runner = createRunner(source, sink);
     runner.start();
     return runner;
+}
+
+export interface FetchOptions {
+    timeout: number;
 }
 
 /**
