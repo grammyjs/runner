@@ -182,13 +182,15 @@ export function createBatchSink<Y, R = unknown>(
 export function createConcurrentSink<Y, R = unknown>(
     handler: UpdateConsumer<Y>,
     errorHandler: (error: R) => Promise<void>,
-    concurrency = 500,
     options: SinkOptions<Y> = {},
 ): UpdateSink<Y> {
     const {
-        milliseconds: timeout = Infinity,
-        handler: timeoutHandler = () => {},
-    } = options.timeout ?? {};
+        concurrency = 500,
+        timeout: {
+            milliseconds: timeout = Infinity,
+            handler: timeoutHandler = () => {},
+        } = {},
+    } = options;
     const q = new DecayingDeque(
         timeout,
         handler.consume,

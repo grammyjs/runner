@@ -1,19 +1,17 @@
 import {
     createConcurrentSink,
     type SinkOptions,
+    type UpdateConsumer,
     type UpdateSink,
 } from "./sink.ts";
 import {
     createSource,
     type SourceOptions,
     type UpdateSource,
+    type UpdateSupplier,
 } from "./source.ts";
 
 export interface RunOptions<Y> {
-    /**
-     * Options that can be passed to `getUpdates` calls.
-     */
-    fetch?: FetchOptions;
     /**
      * Options that influence the behavior of the update source.
      */
@@ -33,6 +31,12 @@ export interface RunOptions<Y> {
  */
 export interface RunnerOptions {
     /**
+     * Options that can be passed when fetching new updates. All options here are
+     * simply forwarded to `getUpdates`. The runner itself does not do anything
+     * with them.
+     */
+    fetch?: FetchOptions;
+    /**
      * When a call to `getUpdates` fails, this option specifies the number of
      * milliseconds that the runner should keep on retrying the calls.
      */
@@ -48,6 +52,11 @@ export interface RunnerOptions {
      * Set this option to `false` to suppress output.
      */
     silent?: boolean;
+}
+
+// TODO: complete
+export interface FetchOptions {
+    timeout?: number;
 }
 
 /**
@@ -122,65 +131,44 @@ interface BotAdapter<Y, R> {
  */
 export function run<Y extends { update_id: number }, R>(
     bot: BotAdapter<Y, R>,
-    options?: RunOptions<Y>,
-): RunnerHandle;
-export function run<Y extends { update_id: number }, R>(
-    bot: BotAdapter<Y, R>,
-    concurrency?: number,
-    sourceOptions?: SourceOptions,
-    runnerOptions?: RunnerOptions,
-    sinkOptions?: SinkOptions<Y>,
-): RunnerHandle;
-export function run<Y extends { update_id: number }, R>(
-    bot: BotAdapter<Y, R>,
-    options: number | RunOptions = {},
-    sourceOptions?: SourceOptions,
+    options: RunOptions<Y> = {},
 ): RunnerHandle {
-    runnerOptions.maxRetryTime ??= 15 * 60 * 60 * 1000; // 15 hours in milliseconds
-    runnerOptions.retryInterval ??= "exponential";
-    runnerOptions.speedTrafficBalance ??= 0; // speed
+    const {
+        source: sourceOptions = {},
+        runner: runnerOptions = {},
+        sink: sinkOptions = {},
+    } = options;
 
     // create update fetch function
-    const fetchUpdates = createUpdateFetcher(
-        bot,
-        runnerOptions.maxRetryTime,
-        runnerOptions.retryInterval,
-        sourceOptions,
-        runnerOptions.silent,
-    );
+    const fetchUpdates = createUpdateFetcher(bot, runnerOptions);
 
     // create source
-    const source = createSource({
+    const supplier: UpdateSupplier<Y> = {
         supply: async function (batchSize, signal) {
             if (bot.init !== undefined) await bot.init();
             const updates = await fetchUpdates(batchSize, signal);
-            this.supply = fetchUpdates;
+            supplier.supply = fetchUpdates;
             return updates;
         },
-    }, runnerOptions.speedTrafficBalance);
+    };
+    const source = createSource(supplier, sourceOptions);
 
     // create sink
-    const sink = createConcurrentSink<Y, R>(
-        { consume: (update) => bot.handleUpdate(update) },
-        async (error) => {
-            try {
-                await bot.errorHandler(error);
-            } catch (error) {
-                printError(error);
-            }
-        },
-        concurrency,
-        sinkOptions,
-    );
+    const consumer: UpdateConsumer<Y> = {
+        consume: (update) => bot.handleUpdate(update),
+    };
+    const sink = createConcurrentSink<Y, R>(consumer, async (error) => {
+        try {
+            await bot.errorHandler(error);
+        } catch (error) {
+            printError(error);
+        }
+    }, sinkOptions);
 
     // launch
     const runner = createRunner(source, sink);
     runner.start();
     return runner;
-}
-
-export interface FetchOptions {
-    timeout: number;
 }
 
 /**
@@ -195,19 +183,19 @@ export interface FetchOptions {
  * calls.
  *
  * @param bot A grammY bot
- * @param maxRetryTime Maximum time to keep on retrying before throwing
- * @param retryInterval In what intervals to perform retries
- * @param sourceOptions Arbitrary options to pass on to the calls
- * @param silent Suppress logging errors to `console.error`
+ * @param options Further options on how to fetch updates
  * @returns A function that can fetch updates with automatic retry behavior
  */
 export function createUpdateFetcher<Y extends { update_id: number }, R>(
     bot: BotAdapter<Y, R>,
-    maxRetryTime: number,
-    retryInterval: "exponential" | "quadratic" | number,
-    sourceOptions: any,
-    silent = false,
+    options: RunnerOptions = {},
 ) {
+    const {
+        fetch: fetchOptions,
+        retryInterval = "exponential",
+        maxRetryTime = 15 * 60 * 60 * 1000, // 15 hours in milliseconds
+        silent,
+    } = options;
     const backoff: (t: number) => number = retryInterval === "exponential"
         ? (t) => t + t
         : retryInterval === "quadratic"
@@ -221,9 +209,9 @@ export function createUpdateFetcher<Y extends { update_id: number }, R>(
     async function fetchUpdates(batchSize: number, signal: AbortSignal) {
         const args = {
             timeout: 30,
-            ...sourceOptions,
+            ...fetchOptions,
             offset,
-            limit: Math.max(1, Math.min(100, batchSize)),
+            limit: Math.max(1, Math.min(batchSize, 100)), // 1 <= batchSize <= 100
         };
 
         const latestRetry = Date.now() + maxRetryTime;
