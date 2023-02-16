@@ -58,9 +58,29 @@ export interface RunnerOptions {
     silent?: boolean;
 }
 
-// TODO: complete
+/**
+ * Options that can be passed to the call to `getUpdates` when the runner
+ * fetches new a new batch of updates.
+ *
+ * Corresponds to the options mentioned in
+ * https://core.telegram.org/bots/api#getupdates but without the parameters that
+ * the runner controls.
+ */
 export interface FetchOptions {
+    /**
+     * Timeout in seconds for long polling. Defaults to 30.
+     */
     timeout?: number;
+    /**
+     * A list of the update types you want your bot to receive. For example,
+     * specify `["message", "edited_channel_post", "callback_query"]` to only
+     * receive updates of these types. See
+     * [Update](https://core.telegram.org/bots/api#update) for a complete list
+     * of available update types. Specify an empty list to receive all update
+     * types except `chat_member` (default). If not specified, the previous
+     * setting will be used.
+     */
+    allowed_updates?: string[];
 }
 
 /**
