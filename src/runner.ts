@@ -286,7 +286,8 @@ export function createRunner<Y>(
     };
 }
 
-async function throwIfUnrecoverable(err: unknown) {
+// deno-lint-ignore no-explicit-any
+async function throwIfUnrecoverable(err: any) {
     if (typeof err !== "object" || err === null) return;
     const code = "error_code" in err ? err.error_code : undefined;
     if (code === 401 || code === 409) throw err; // unauthorized or conflict
