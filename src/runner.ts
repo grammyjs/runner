@@ -137,14 +137,10 @@ export function run<Y extends { update_id: number }, R>(
     bot: BotAdapter<Y, R>,
     options: RunOptions<Y> = {},
 ): RunnerHandle {
-    const {
-        source: sourceOptions = {},
-        runner: runnerOptions = {},
-        sink: sinkOptions = {},
-    } = options;
+    const { source: sourceOpts, runner: runnerOpts, sink: sinkOpts } = options;
 
     // create update fetch function
-    const fetchUpdates = createUpdateFetcher(bot, runnerOptions);
+    const fetchUpdates = createUpdateFetcher(bot, runnerOpts);
 
     // create source
     const supplier: UpdateSupplier<Y> = {
@@ -155,7 +151,7 @@ export function run<Y extends { update_id: number }, R>(
             return updates;
         },
     };
-    const source = createSource(supplier, sourceOptions);
+    const source = createSource(supplier, sourceOpts);
 
     // create sink
     const consumer: UpdateConsumer<Y> = {
@@ -167,7 +163,7 @@ export function run<Y extends { update_id: number }, R>(
         } catch (error) {
             printError(error);
         }
-    }, sinkOptions);
+    }, sinkOpts);
 
     // launch
     const runner = createRunner(source, sink);
@@ -195,7 +191,7 @@ export function createUpdateFetcher<Y extends { update_id: number }, R>(
     options: RunnerOptions = {},
 ) {
     const {
-        fetch: fetchOptions,
+        fetch: fetchOpts,
         retryInterval = "exponential",
         maxRetryTime = 15 * 60 * 60 * 1000, // 15 hours in milliseconds
         silent,
@@ -213,7 +209,7 @@ export function createUpdateFetcher<Y extends { update_id: number }, R>(
     async function fetchUpdates(batchSize: number, signal: AbortSignal) {
         const args = {
             timeout: 30,
-            ...fetchOptions,
+            ...fetchOpts,
             offset,
             limit: Math.max(1, Math.min(batchSize, 100)), // 1 <= batchSize <= 100
         };
