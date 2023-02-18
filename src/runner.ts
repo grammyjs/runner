@@ -99,6 +99,7 @@ interface BotAdapter<Y, R> {
 export function run<Y extends { update_id: number }, R>(
     bot: BotAdapter<Y, R>,
     concurrency = 500,
+    // deno-lint-ignore no-explicit-any
     sourceOptions: any = {},
     runnerOptions: RunnerOptions = {},
     sinkOptions: SinkOptions<Y> = {
@@ -170,6 +171,7 @@ export function createUpdateFetcher<Y extends { update_id: number }, R>(
     bot: BotAdapter<Y, R>,
     maxRetryTime: number,
     retryInterval: "exponential" | "quadratic" | number,
+    // deno-lint-ignore no-explicit-any
     sourceOptions: any,
     silent = false,
 ) {
@@ -284,15 +286,20 @@ export function createRunner<Y>(
     };
 }
 
-// deno-lint-ignore no-explicit-any
-async function throwIfUnrecoverable(err: any) {
+async function throwIfUnrecoverable(err: unknown) {
     if (typeof err !== "object" || err === null) return;
-    const code = err.error_code;
+    const code = "error_code" in err ? err.error_code : undefined;
     if (code === 401 || code === 409) throw err; // unauthorized or conflict
     if (code === 429) {
         // server is closing, must wait some seconds
-        const delay = err.parameters?.retry_after;
-        if (typeof delay === "number") {
+        if (
+            "parameters" in err &&
+            typeof err.parameters === "object" &&
+            err.parameters !== null &&
+            "retry_after" in err.parameters &&
+            typeof err.parameters.retry_after === "number"
+        ) {
+            const delay = err.parameters.retry_after;
             await new Promise((r) => setTimeout(r, 1000 * delay));
         }
     }
