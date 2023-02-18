@@ -162,7 +162,7 @@ export function createSource<Y>(
                 const post = Date.now();
                 yield items;
                 const wait = record(items.length, post - pre);
-                if (wait > 0) {
+                if (items.length < 100 && wait > 0) {
                     await new Promise<void>((r) => {
                         endWait = r;
                         waitHandle = setTimeout(r, wait);
