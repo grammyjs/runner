@@ -1,10 +1,45 @@
-import { createConcurrentSink, SinkOptions, UpdateSink } from "./sink.ts";
-import { createSource, UpdateSource } from "./source.ts";
+import {
+    createConcurrentSink,
+    type SinkOptions,
+    type UpdateConsumer,
+    type UpdateSink,
+} from "./sink.ts";
+import {
+    createSource,
+    type SourceOptions,
+    type UpdateSource,
+    type UpdateSupplier,
+} from "./source.ts";
 
 /**
- * Options to be passed to `run(bot)`,
+ * Options to be passed to `run(bot, options)`. Collects the options for the
+ * underlying update source, runner, and update sink.
+ */
+export interface RunOptions<Y> {
+    /**
+     * Options that influence the behavior of the update source.
+     */
+    source?: SourceOptions;
+    /**
+     * Options that influence the behavior of the runner which connects source and sink.
+     */
+    runner?: RunnerOptions;
+    /**
+     * Options that influence the behavior of the sink that processes the updates.
+     */
+    sink?: SinkOptions<Y>;
+}
+
+/**
+ * Options to be passed to the runner created internally by `run(bot)`.
  */
 export interface RunnerOptions {
+    /**
+     * Options that can be passed when fetching new updates. All options here are
+     * simply forwarded to `getUpdates`. The runner itself does not do anything
+     * with them.
+     */
+    fetch?: FetchOptions;
     /**
      * When a call to `getUpdates` fails, this option specifies the number of
      * milliseconds that the runner should keep on retrying the calls.
@@ -21,6 +56,31 @@ export interface RunnerOptions {
      * Set this option to `false` to suppress output.
      */
     silent?: boolean;
+}
+
+/**
+ * Options that can be passed to the call to `getUpdates` when the runner
+ * fetches new a new batch of updates.
+ *
+ * Corresponds to the options mentioned in
+ * https://core.telegram.org/bots/api#getupdates but without the parameters that
+ * the runner controls.
+ */
+export interface FetchOptions {
+    /**
+     * Timeout in seconds for long polling. Defaults to 30.
+     */
+    timeout?: number;
+    /**
+     * A list of the update types you want your bot to receive. For example,
+     * specify `["message", "edited_channel_post", "callback_query"]` to only
+     * receive updates of these types. See
+     * [Update](https://core.telegram.org/bots/api#update) for a complete list
+     * of available update types. Specify an empty list to receive all update
+     * types except `chat_member` (default). If not specified, the previous
+     * setting will be used.
+     */
+    allowed_updates?: string[];
 }
 
 /**
@@ -43,6 +103,12 @@ export interface RunnerHandle {
      * handle.stop()` to be sure that your bot really stopped completely.
      */
     stop: () => Promise<void>;
+    /**
+     * Returns the size of the underlying update sink. This number is equal to
+     * the number of updates that are currently being processed. The size does
+     * not count updates that have completed, errored, or timed out.
+     */
+    size: () => number;
     /**
      * Returns a promise that resolves as soon as the runner stops, either by
      * being stopped or by crashing. If the bot crashes, it means that the error
@@ -90,58 +156,40 @@ interface BotAdapter<Y, R> {
  * learn more about how to scale a bot with grammY.
  *
  * @param bot A grammY bot
- * @param concurrency Maximal number of updates to process concurrently
- * @param sourceOptions Options to pass to `getUpdates` calls
- * @param runnerOptions Options for retry behavior of `getUpdates` calls
- * @param sinkOptions Further configuration options
+ * @param options Further configuration options
  * @returns A handle to manage your running bot
  */
 export function run<Y extends { update_id: number }, R>(
     bot: BotAdapter<Y, R>,
-    concurrency = 500,
-    // deno-lint-ignore no-explicit-any
-    sourceOptions: any = {},
-    runnerOptions: RunnerOptions = {},
-    sinkOptions: SinkOptions<Y> = {
-        timeout: Infinity,
-        timeoutHandler: () => {},
-    },
+    options: RunOptions<Y> = {},
 ): RunnerHandle {
-    runnerOptions.maxRetryTime ??= 15 * 60 * 60 * 1000; // 15 hours in milliseconds
-    runnerOptions.retryInterval ??= "exponential";
+    const { source: sourceOpts, runner: runnerOpts, sink: sinkOpts } = options;
 
     // create update fetch function
-    const fetchUpdates = createUpdateFetcher(
-        bot,
-        runnerOptions.maxRetryTime,
-        runnerOptions.retryInterval,
-        sourceOptions,
-        runnerOptions.silent,
-    );
+    const fetchUpdates = createUpdateFetcher(bot, runnerOpts);
 
     // create source
-    const source = createSource({
+    const supplier: UpdateSupplier<Y> = {
         supply: async function (batchSize, signal) {
             if (bot.init !== undefined) await bot.init();
             const updates = await fetchUpdates(batchSize, signal);
-            this.supply = fetchUpdates;
+            supplier.supply = fetchUpdates;
             return updates;
         },
-    });
+    };
+    const source = createSource(supplier, sourceOpts);
 
     // create sink
-    const sink = createConcurrentSink<Y, R>(
-        { consume: (update) => bot.handleUpdate(update) },
-        async (error) => {
-            try {
-                await bot.errorHandler(error);
-            } catch (error) {
-                printError(error);
-            }
-        },
-        concurrency,
-        sinkOptions,
-    );
+    const consumer: UpdateConsumer<Y> = {
+        consume: (update) => bot.handleUpdate(update),
+    };
+    const sink = createConcurrentSink<Y, R>(consumer, async (error) => {
+        try {
+            await bot.errorHandler(error);
+        } catch (error) {
+            printError(error);
+        }
+    }, sinkOpts);
 
     // launch
     const runner = createRunner(source, sink);
@@ -161,20 +209,19 @@ export function run<Y extends { update_id: number }, R>(
  * calls.
  *
  * @param bot A grammY bot
- * @param maxRetryTime Maximum time to keep on retrying before throwing
- * @param retryInterval In what intervals to perform retries
- * @param sourceOptions Arbitrary options to pass on to the calls
- * @param silent Suppress logging errors to `console.error`
+ * @param options Further options on how to fetch updates
  * @returns A function that can fetch updates with automatic retry behavior
  */
 export function createUpdateFetcher<Y extends { update_id: number }, R>(
     bot: BotAdapter<Y, R>,
-    maxRetryTime: number,
-    retryInterval: "exponential" | "quadratic" | number,
-    // deno-lint-ignore no-explicit-any
-    sourceOptions: any,
-    silent = false,
+    options: RunnerOptions = {},
 ) {
+    const {
+        fetch: fetchOpts,
+        retryInterval = "exponential",
+        maxRetryTime = 15 * 60 * 60 * 1000, // 15 hours in milliseconds
+        silent,
+    } = options;
     const backoff: (t: number) => number = retryInterval === "exponential"
         ? (t) => t + t
         : retryInterval === "quadratic"
@@ -188,9 +235,9 @@ export function createUpdateFetcher<Y extends { update_id: number }, R>(
     async function fetchUpdates(batchSize: number, signal: AbortSignal) {
         const args = {
             timeout: 30,
-            ...sourceOptions,
+            ...fetchOpts,
             offset,
-            limit: Math.max(1, Math.min(100, batchSize)),
+            limit: Math.max(1, Math.min(batchSize, 100)), // 1 <= batchSize <= 100
         };
 
         const latestRetry = Date.now() + maxRetryTime;
@@ -274,6 +321,7 @@ export function createRunner<Y>(
             running = true;
             task = runner();
         },
+        size: () => sink.size(),
         stop: () => {
             const t = task!;
             running = false;

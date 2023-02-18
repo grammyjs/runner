@@ -349,7 +349,7 @@ Deno.test(
             false,
             () => t.fail(),
             (i, p) => {
-                p.then((o) => {
+                p.then((o: any) => {
                     t.assertEquals(i, o);
                     t.pass();
                 });

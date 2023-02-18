@@ -37,6 +37,12 @@ export interface UpdateSink<Y> {
      */
     handle: (updates: Y[]) => Promise<number>;
     /**
+     * Returns the size of the sink. The size is equal to the number of tasks
+     * that are currently being processed. Calling `size()` is always equal to
+     * `snapshot().length`.
+     */
+    size: () => number;
+    /**
      * Takes a snapshot of the sink. This synchronously returns all tasks that
      * are currently being processed, in the order they were added.
      *
@@ -54,17 +60,31 @@ export interface UpdateSink<Y> {
  */
 export interface SinkOptions<Y> {
     /**
-     * Maximal number of milliseconds that an update may take to be processed by
-     * the underlying sink.
+     * Concurrency limit of the runner. Specifies how many updates should be
+     * processed in parallel at maximum.
+     *
+     * Note that this is done using a best-effort approach. If Telegram ever
+     * returns more updates than requested (which should not ever happen), this
+     * limit can be exceeded.
      */
-    timeout: number;
+    concurrency?: number;
     /**
-     * Handler function that will be called with updates that process longer
-     * than allowed by `timeout`. The second argument to the handler function
-     * will be the unresolved promise. Note however that the timeout handler
-     * itself has to be synchronous.
+     * Timeout options. Consist of a duration in milliseconds and a handler.
      */
-    timeoutHandler: (update: Y, task: Promise<void>) => void;
+    timeout?: {
+        /**
+         * Maximal number of milliseconds that an update may take to be processed by
+         * the underlying sink.
+         */
+        milliseconds: number;
+        /**
+         * Handler function that will be called with updates that process longer
+         * than allowed by `timeout`. The second argument to the handler function
+         * will be the unresolved promise. Note however that the timeout handler
+         * itself has to be synchronous.
+         */
+        handler: (update: Y, task: Promise<void>) => void;
+    };
 }
 
 /**
@@ -86,14 +106,18 @@ export interface SinkOptions<Y> {
 export function createSequentialSink<Y, R = unknown>(
     handler: UpdateConsumer<Y>,
     errorHandler: (error: R) => Promise<void>,
-    options: SinkOptions<Y> = { timeout: Infinity, timeoutHandler: () => {} },
+    options: SinkOptions<Y> = {},
 ): UpdateSink<Y> {
+    const {
+        milliseconds: timeout = Infinity,
+        handler: timeoutHandler = () => {},
+    } = options.timeout ?? {};
     const q = new DecayingDeque(
-        options.timeout,
+        timeout,
         handler.consume,
         false,
         errorHandler,
-        options.timeoutHandler,
+        timeoutHandler,
     );
     return {
         handle: async (updates) => {
@@ -101,6 +125,7 @@ export function createSequentialSink<Y, R = unknown>(
             for (let i = 0; i < len; i++) await q.add([updates[i]!]);
             return Infinity;
         },
+        size: () => q.length,
         snapshot: () => q.pendingTasks(),
     };
 }
@@ -126,18 +151,23 @@ export function createSequentialSink<Y, R = unknown>(
 export function createBatchSink<Y, R = unknown>(
     handler: UpdateConsumer<Y>,
     errorHandler: (error: R) => Promise<void>,
-    options: SinkOptions<Y> = { timeout: Infinity, timeoutHandler: () => {} },
+    options: SinkOptions<Y> = {},
 ): UpdateSink<Y> {
+    const {
+        milliseconds: timeout = Infinity,
+        handler: timeoutHandler = () => {},
+    } = options.timeout ?? {};
     const q = new DecayingDeque(
-        options.timeout,
+        timeout,
         handler.consume,
         false,
         errorHandler,
-        options.timeoutHandler,
+        timeoutHandler,
     );
     const constInf = () => Infinity;
     return {
         handle: (updates) => q.add(updates).then(constInf),
+        size: () => q.length,
         snapshot: () => q.pendingTasks(),
     };
 }
@@ -160,18 +190,25 @@ export function createBatchSink<Y, R = unknown>(
 export function createConcurrentSink<Y, R = unknown>(
     handler: UpdateConsumer<Y>,
     errorHandler: (error: R) => Promise<void>,
-    concurrency = 500,
-    options: SinkOptions<Y> = { timeout: Infinity, timeoutHandler: () => {} },
+    options: SinkOptions<Y> = {},
 ): UpdateSink<Y> {
+    const {
+        concurrency = 500,
+        timeout: {
+            milliseconds: timeout = Infinity,
+            handler: timeoutHandler = () => {},
+        } = {},
+    } = options;
     const q = new DecayingDeque(
-        options.timeout,
+        timeout,
         handler.consume,
         concurrency,
         errorHandler,
-        options.timeoutHandler,
+        timeoutHandler,
     );
     return {
         handle: (updates) => q.add(updates),
+        size: () => q.length,
         snapshot: () => q.pendingTasks(),
     };
 }
