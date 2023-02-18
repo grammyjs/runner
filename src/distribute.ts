@@ -5,7 +5,7 @@ import {
     type Thread,
 } from "./platform.deno.ts";
 
-class UpdateThread {
+class ThreadPool {
     public readonly threads: Thread<Update, number>[] = [];
     public readonly tasks = new Map<number, () => void>();
 
@@ -15,16 +15,16 @@ class UpdateThread {
         private readonly count = 4,
     ) {
         for (let i = 0; i < count; i++) {
-            const worker = createThread<Update, number, UserFromGetMe>(
+            const thread = createThread<Update, number, UserFromGetMe>(
                 specifier,
                 me,
             );
-            worker.onMessage((update_id) => {
+            thread.onMessage((update_id) => {
                 const task = this.tasks.get(update_id);
                 task?.();
                 this.tasks.delete(update_id);
             });
-            this.threads.push(worker);
+            this.threads.push(thread);
         }
     }
 
@@ -37,7 +37,7 @@ class UpdateThread {
     }
 }
 
-const workers = new Map<ModuleSpecifier, UpdateThread>();
+const workers = new Map<ModuleSpecifier, ThreadPool>();
 function getWorker(
     specifier: ModuleSpecifier,
     me: UserFromGetMe,
@@ -45,7 +45,7 @@ function getWorker(
 ) {
     let worker = workers.get(specifier);
     if (worker === undefined) {
-        worker = new UpdateThread(specifier, me, count);
+        worker = new ThreadPool(specifier, me, count);
         workers.set(specifier, worker);
     }
     return worker;
