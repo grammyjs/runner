@@ -1,3 +1,4 @@
+import { type Update } from "./deps.deno.ts";
 import {
     createConcurrentSink,
     type SinkOptions,
@@ -80,7 +81,7 @@ export interface FetchOptions {
      * types except `chat_member` (default). If not specified, the previous
      * setting will be used.
      */
-    allowed_updates?: string[];
+    allowed_updates?: ReadonlyArray<Exclude<keyof Update, "update_id">>;
 }
 
 /**
