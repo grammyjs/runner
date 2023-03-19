@@ -4,4 +4,7 @@ export {
     type BotConfig,
     type Context,
 } from "https://lib.deno.dev/x/grammy@v1/mod.ts";
-export * from "https://lib.deno.dev/x/grammy@v1/types.ts";
+export {
+    type Update,
+    type UserFromGetMe,
+} from "https://lib.deno.dev/x/grammy@v1/types.ts";
