@@ -1,8 +1,2 @@
-export {
-    type Api,
-    Bot,
-    type BotConfig,
-    type Context,
-    type Update,
-} from "grammy";
-export * from "grammy/types";
+export { type Api, Bot, type BotConfig, type Context } from "grammy";
+export { type Update, type UserFromGetMe } from "grammy/types";
