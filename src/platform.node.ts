@@ -28,7 +28,7 @@ export function createThread<I, O, S>(
 
 export function parentThread<I, O, S>(): Thread<I, O> & Seed<S> {
     return {
-        seed: workerData,
+        seed: Promise.resolve(workerData),
         onMessage(callback) {
             parentPort?.on("message", callback);
         },
