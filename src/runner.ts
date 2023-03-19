@@ -1,3 +1,4 @@
+import { Update } from "./deps.deno.ts";
 import {
     createConcurrentSink,
     type SinkOptions,
@@ -80,7 +81,7 @@ export interface FetchOptions {
      * types except `chat_member` (default). If not specified, the previous
      * setting will be used.
      */
-    allowed_updates?: string[];
+    allowed_updates?: ReadonlyArray<Exclude<keyof Update, "update_id">>;
 }
 
 /**
@@ -183,13 +184,17 @@ export function run<Y extends { update_id: number }, R>(
     const consumer: UpdateConsumer<Y> = {
         consume: (update) => bot.handleUpdate(update),
     };
-    const sink = createConcurrentSink<Y, R>(consumer, async (error) => {
-        try {
-            await bot.errorHandler(error);
-        } catch (error) {
-            printError(error);
-        }
-    }, sinkOpts);
+    const sink = createConcurrentSink<Y, R>(
+        consumer,
+        async (error) => {
+            try {
+                await bot.errorHandler(error);
+            } catch (error) {
+                printError(error);
+            }
+        },
+        sinkOpts,
+    );
 
     // launch
     const runner = createRunner(source, sink);

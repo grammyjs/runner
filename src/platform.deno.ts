@@ -32,7 +32,7 @@ export function createThread<I, O, S>(
 export function parentThread<O, I, S>(): Thread<O, I> & Seed<S> {
     let resolve: undefined | ((seed: S) => void) = undefined;
     return {
-        seed: new Promise<S>((r) => resolve = r),
+        seed: new Promise<S>((r) => (resolve = r)),
         onMessage(callback) {
             self.onmessage = ({ data }: MessageEvent<S>) => {
                 resolve?.(data);

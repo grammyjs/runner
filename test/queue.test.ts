@@ -8,7 +8,7 @@ Deno.test(
         let res = "";
         const q = new DecayingDeque(
             Infinity,
-            (v) => (res += v, Promise.resolve()),
+            (v) => ((res += v), Promise.resolve()),
             false,
             () => t.fail(),
             () => t.fail(),
@@ -25,7 +25,7 @@ Deno.test(
         let res = "";
         const q = new DecayingDeque(
             1000,
-            (v) => (res += v, Promise.resolve()),
+            (v) => ((res += v), Promise.resolve()),
             false,
             () => t.fail(),
             () => t.fail(),
@@ -42,7 +42,7 @@ Deno.test(
         let res = "";
         const q = new DecayingDeque(
             1000,
-            (v) => (res += v, Promise.resolve()),
+            (v) => ((res += v), Promise.resolve()),
             false,
             () => t.fail(),
             () => t.fail(),
@@ -59,7 +59,7 @@ Deno.test(
         let res = "";
         const q = new DecayingDeque(
             1000,
-            (v) => (res += v, Promise.resolve()),
+            (v) => ((res += v), Promise.resolve()),
             false,
             () => t.fail(),
             () => t.fail(),
@@ -99,7 +99,7 @@ Deno.test(
         let res = "";
         const q = new DecayingDeque(
             1000,
-            (v) => (res += v, Promise.resolve()),
+            (v) => ((res += v), Promise.resolve()),
             false,
             () => t.fail(),
             () => t.fail(),

@@ -42,10 +42,7 @@ export class BotWorker<
     C extends Context = Context,
     A extends Api = Api,
 > extends Bot<C, A> {
-    constructor(
-        public readonly token: string,
-        config?: BotConfig<C>,
-    ) {
+    constructor(public readonly token: string, config?: BotConfig<C>) {
         super(token, config);
         const p = parentThread<number, Update, UserFromGetMe>();
         p.seed.then((me) => {
