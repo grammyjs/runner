@@ -1,12 +1,12 @@
-import { Bot } from 'grammy'
-import { distribute, run } from '../../out/mod'
+import { Bot } from "grammy";
+import { distribute, run } from "../../out/mod";
 
 // Create bot
-const bot = new Bot('')
+const bot = new Bot("");
 
 // Add the usual middleware, yada yada
-bot.command('start', ctx => ctx.reply('Got your message.'))
-bot.use(distribute(__dirname + '/worker'))
+bot.command("start", (ctx) => ctx.reply("Got your message."));
+bot.use(distribute(__dirname + "/worker"));
 
 // Run it concurrently!
-run(bot)
+run(bot);
