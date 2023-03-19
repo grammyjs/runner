@@ -1,9 +1,9 @@
-import { deferred } from "https://deno.land/std@0.177.0/async/deferred.ts";
 import {
-    assert,
-    assertEquals,
-    assertThrows,
+    assert as assert,
+    assertEquals as assertEquals,
+    assertThrows as assertThrows,
 } from "https://deno.land/std@0.177.0/testing/asserts.ts";
+import { deferred } from "https://deno.land/std@0.177.0/async/deferred.ts";
 
 export interface T {
     pass: () => void;

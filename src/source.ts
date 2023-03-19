@@ -120,7 +120,7 @@ export function createSource<Y>(
     let pace = Infinity;
 
     const bounded = Math.max(0.0, Math.min(speedTrafficBalance, 1.0)); // [0;1]
-    const balance = (100 * bounded) / Math.max(1, maxDelayMilliseconds); // number of wanted updates per call
+    const balance = 100 * bounded / Math.max(1, maxDelayMilliseconds); // number of wanted updates per call
     // We take two cyclic buffers to store update counts and durations
     // for the last STAT_LEN update calls.
     const counts = Array(STAT_LEN).fill(100);
@@ -146,7 +146,7 @@ export function createSource<Y>(
             // move index
             index = (index + 1) % STAT_LEN;
             // estimate time to wait, and cap it smoothly at maxDelay
-            const estimate = (balance * totalDuration) / (totalCounts || 1);
+            const estimate = balance * totalDuration / (totalCounts || 1);
             const capped = maxDelayMilliseconds * Math.tanh(estimate);
             return capped;
         };
@@ -184,7 +184,7 @@ export function createSource<Y>(
 
     return {
         generator: () => updateGenerator,
-        setGeneratorPace: (newPace) => (pace = newPace),
+        setGeneratorPace: (newPace) => pace = newPace,
         isActive: () => active,
         close: () => close(),
     };
