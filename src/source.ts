@@ -108,7 +108,7 @@ export function createSource<Y>(
 
     let active = false;
     let endWait = () => {};
-    let waitHandle: ReturnType<typeof setTimeout> | undefined = undefined;
+    let waitHandle: number | undefined = undefined;
     let controller: AbortController;
     function deactivate() {
         active = false;
