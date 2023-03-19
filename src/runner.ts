@@ -1,4 +1,4 @@
-import { Update } from "./deps.deno.ts";
+import { type Update } from "./deps.deno.ts";
 import {
     createConcurrentSink,
     type SinkOptions,
