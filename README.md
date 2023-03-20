@@ -59,7 +59,7 @@ However, concurrency is generally very hard to get right, so please read [this s
 
 —more verbose documentation about concurrency in grammY.
 
-### [grammY runner API Reference](https/deno.land/x/grammy_runner/mod.ts)
+### [grammY runner API Reference](https://deno.land/x/grammy_runner/mod.ts)
 
 —documentation of everything that grammY runner exports.
 
