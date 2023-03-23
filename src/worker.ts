@@ -2,6 +2,7 @@ import {
     type Api,
     Bot,
     type BotConfig,
+    BotError,
     type Context,
     type Update,
     type UserFromGetMe,
@@ -54,8 +55,22 @@ export class BotWorker<
             }
         });
         p.onMessage(async (update: Update) => {
-            await this.handleUpdate(update);
-            p.postMessage(update.update_id);
+            try {
+                await this.handleUpdate(update);
+            } catch (err) {
+                // should always be true
+                if (err instanceof BotError) {
+                    await this.errorHandler(err);
+                } else {
+                    console.error(
+                        "FATAL: grammY worker unable to handle:",
+                        err,
+                    );
+                    throw err;
+                }
+            } finally {
+                p.postMessage(update.update_id);
+            }
         });
         this.start = () => {
             throw new Error("Cannot start a bot worker!");
