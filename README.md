@@ -11,7 +11,7 @@ The grammY runner solves this by providing you with a sophisticated mechanism th
 
 Use the grammY runner package if
 
-- your bot needs to process a lot of updates (more than 1K/hour), or
+- your bot needs to process a lot of updates (more than 1K/second), or
 - your bot performs long-running operations such as large file transfers.
 
 Do **not** use grammY runner if
