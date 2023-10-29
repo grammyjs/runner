@@ -153,24 +153,25 @@ export function createSource<Y>(
 
     async function* worker() {
         active = true;
+        let last = Date.now();
         do {
             controller = new AbortController();
             controller.signal.addEventListener("abort", deactivate);
             try {
-                const pre = Date.now();
                 const items = await supplier.supply(pace, controller.signal);
-                const post = Date.now();
+                const now = Date.now();
                 yield items;
-                const wait = record(items.length, post - pre);
-                if (items.length < 100 && wait > 0) {
+                const wait = record(items.length, now - last);
+                last = Date.now();
+                if (wait > 0 && items.length < 100) {
                     await new Promise<void>((r) => {
                         endWait = r;
                         waitHandle = setTimeout(r, wait);
                     });
                 }
             } catch (e) {
-                if (!controller.signal.aborted) throw e;
                 close();
+                if (!controller.signal.aborted) throw e;
                 break;
             }
         } while (active);
