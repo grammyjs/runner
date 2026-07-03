@@ -37,16 +37,17 @@ class ThreadPool {
     }
 }
 
-const workers = new Map<ModuleSpecifier, ThreadPool>();
+const workers = new Map<string, ThreadPool>();
 function getWorker(
     specifier: ModuleSpecifier,
     me: UserFromGetMe,
     count?: number,
 ) {
-    let worker = workers.get(specifier);
+    const key = `${String(specifier)}:${count ?? 4}`;
+    let worker = workers.get(key);
     if (worker === undefined) {
         worker = new ThreadPool(specifier, me, count);
-        workers.set(specifier, worker);
+        workers.set(key, worker);
     }
     return worker;
 }
